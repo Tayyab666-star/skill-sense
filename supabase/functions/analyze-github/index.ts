@@ -43,6 +43,19 @@ serve(async (req) => {
       );
     }
 
+    // Validate username format (GitHub usernames are alphanumeric with hyphens, max 39 chars)
+    const usernamePattern = /^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}$/;
+    if (!usernamePattern.test(githubUsername)) {
+      console.error('❌ Invalid GitHub username format:', githubUsername);
+      return new Response(
+        JSON.stringify({ 
+          error: "Invalid GitHub username format",
+          details: "GitHub usernames can only contain alphanumeric characters and hyphens, and cannot begin or end with a hyphen."
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     console.log('🔍 Fetching GitHub profile:', githubUsername);
 
     // Fetch user profile
@@ -55,11 +68,17 @@ serve(async (req) => {
 
     if (!profileResponse.ok) {
       if (profileResponse.status === 404) {
+        console.error('❌ GitHub user not found:', githubUsername);
         return new Response(
-          JSON.stringify({ error: "GitHub user not found" }),
+          JSON.stringify({ 
+            error: "GitHub user not found",
+            details: `No GitHub user found with username "${githubUsername}". Please check the username and try again.`
+          }),
           { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      const errorText = await profileResponse.text();
+      console.error('❌ GitHub API error:', profileResponse.status, errorText);
       throw new Error(`GitHub API error: ${profileResponse.status}`);
     }
 

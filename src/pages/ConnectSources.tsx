@@ -17,11 +17,46 @@ export default function ConnectSources() {
   const [isConnectingLinkedIn, setIsConnectingLinkedIn] = useState(false);
   const [githubResult, setGithubResult] = useState<any>(null);
 
+  const extractGithubUsername = (input: string): string | null => {
+    const trimmed = input.trim();
+    
+    // If it's a URL, extract username
+    const urlPatterns = [
+      /github\.com\/([^\/\?#]+)/i,  // Matches github.com/username or github.com/username/repo
+      /^([a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38})$/  // Valid GitHub username pattern
+    ];
+    
+    // Try URL pattern first
+    const urlMatch = trimmed.match(urlPatterns[0]);
+    if (urlMatch && urlMatch[1]) {
+      return urlMatch[1];
+    }
+    
+    // Check if it's a valid username format
+    const usernameMatch = trimmed.match(urlPatterns[1]);
+    if (usernameMatch) {
+      return trimmed;
+    }
+    
+    return null;
+  };
+
   const handleGithubAnalysis = async () => {
     if (!githubUsername.trim()) {
       toast({
         title: "Username Required",
-        description: "Please enter a GitHub username",
+        description: "Please enter a GitHub username or profile URL",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const extractedUsername = extractGithubUsername(githubUsername);
+    
+    if (!extractedUsername) {
+      toast({
+        title: "Invalid Input",
+        description: "Please enter a valid GitHub username (e.g., 'octocat') or URL (e.g., 'github.com/octocat')",
         variant: "destructive",
       });
       return;
@@ -32,7 +67,7 @@ export default function ConnectSources() {
 
     try {
       const { data, error } = await supabase.functions.invoke('analyze-github', {
-        body: { githubUsername: githubUsername.trim() }
+        body: { githubUsername: extractedUsername }
       });
 
       if (error) {
@@ -57,9 +92,21 @@ export default function ConnectSources() {
 
     } catch (error: any) {
       console.error('GitHub analysis error:', error);
+      
+      // Try to parse error details from the response
+      let errorMessage = "Failed to analyze GitHub profile";
+      let errorTitle = "❌ Analysis Failed";
+      
+      if (error.message?.includes("404")) {
+        errorTitle = "❌ User Not Found";
+        errorMessage = `GitHub user "${extractedUsername}" not found. Please check the username and try again.`;
+      } else if (error.context?.error) {
+        errorMessage = error.context.error;
+      }
+      
       toast({
-        title: "❌ Analysis Failed",
-        description: error.message || "Failed to analyze GitHub profile",
+        title: errorTitle,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -155,14 +202,17 @@ export default function ConnectSources() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="github-username">GitHub Username</Label>
+                  <Label htmlFor="github-username">GitHub Username or URL</Label>
                   <Input
                     id="github-username"
-                    placeholder="octocat"
+                    placeholder="octocat or github.com/octocat"
                     value={githubUsername}
                     onChange={(e) => setGithubUsername(e.target.value)}
                     disabled={isAnalyzingGithub}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Enter your GitHub username or paste your profile URL
+                  </p>
                 </div>
 
                 <Button 
