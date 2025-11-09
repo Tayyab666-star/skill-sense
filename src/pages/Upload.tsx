@@ -12,7 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { ocrService } from "@/services/ocrService";
-import { aiAgent } from "@/services/aiAgent";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProcessingState {
   stage: 'idle' | 'uploading' | 'ocr' | 'validation' | 'analysis' | 'complete' | 'error';
@@ -94,12 +94,23 @@ const Upload = () => {
         return;
       }
 
-      // Stage 4: AI Analysis
+      // Stage 4: AI Analysis (Backend)
       updateProgress('analysis', 75, 'Analyzing skills with AI...');
-      const aiAnalysis = await aiAgent.analyzeCV(
-        ocrResult.text,
-        ocrResult.extractedData.skills
-      );
+      
+      const { data: aiAnalysis, error: aiError } = await supabase.functions.invoke('analyze-cv', {
+        body: {
+          cvText: ocrResult.text,
+          extractedSkills: ocrResult.extractedData.skills
+        }
+      });
+
+      if (aiError) {
+        throw new Error(aiError.message || 'AI analysis failed');
+      }
+
+      if (!aiAnalysis || !aiAnalysis.skills) {
+        throw new Error('Invalid AI response');
+      }
 
       // Stage 5: Complete
       updateProgress('complete', 100, 'Analysis complete!');
