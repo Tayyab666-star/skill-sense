@@ -16,7 +16,7 @@ const Index = () => {
     {
       icon: FileSearch,
       title: "Multi-Source Aggregation",
-      description: "Connect GitHub, LinkedIn, and upload CVs to build a comprehensive skill profile",
+      description: "Connect GitHub, upload CVs, analyze blogs and performance reviews to build a comprehensive skill profile",
       color: "text-success"
     },
     {
@@ -117,7 +117,7 @@ const Index = () => {
             className="text-xl text-muted-foreground max-w-2xl mx-auto"
           >
             AI-powered skill analysis from multiple sources. Upload CVs, connect GitHub repositories, 
-            import LinkedIn profiles - our intelligent system aggregates everything to discover your complete skill profile.
+            analyze blogs and performance reviews - our intelligent system aggregates everything to discover your complete skill profile.
           </motion.p>
           
           <motion.div
@@ -149,7 +149,7 @@ const Index = () => {
           >
             {[
               'GitHub Analysis',
-              'LinkedIn Import',
+              'Blog Analysis',
               'CV Upload',
               'AI Validation',
               'Instant Results'
@@ -235,7 +235,7 @@ const Index = () => {
               {
                 step: "01",
                 title: "Connect Your Sources",
-                description: "Upload CV, connect GitHub for code analysis, or import LinkedIn profile.",
+                description: "Upload CV, connect GitHub for code analysis, or analyze blogs and performance reviews.",
                 icon: Upload
               },
               {
@@ -324,7 +324,7 @@ const Index = () => {
             Ready to Discover Your Full Potential?
           </h2>
           <p className="text-xl mb-8 text-white/90 max-w-2xl mx-auto">
-            Connect GitHub, LinkedIn, and upload CVs. Get comprehensive skill analysis from all your professional sources in minutes.
+            Connect GitHub, upload CVs, and analyze your content. Get comprehensive skill analysis from all your professional sources in minutes.
           </p>
           <Button 
             size="lg"
@@ -346,7 +346,7 @@ const Index = () => {
           </div>
           <p className="mb-2">Multi-Source Skill Analysis Powered by AI</p>
           <p className="text-sm">
-            CV Upload • GitHub • LinkedIn • Blogs • Performance Reviews • Goals Tracking
+            CV Upload • GitHub • Blogs • Performance Reviews • Goals Tracking • Learning Paths
           </p>
           <p className="text-xs mt-4">© 2025 SkillSense. All rights reserved.</p>
         </div>

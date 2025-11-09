@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Brain, Github, Linkedin, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Brain, Github, Loader2, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
@@ -14,7 +14,6 @@ export default function ConnectSources() {
   const { toast } = useToast();
   const [githubUsername, setGithubUsername] = useState("");
   const [isAnalyzingGithub, setIsAnalyzingGithub] = useState(false);
-  const [isConnectingLinkedIn, setIsConnectingLinkedIn] = useState(false);
   const [githubResult, setGithubResult] = useState<any>(null);
 
   const extractGithubUsername = (input: string): string | null => {
@@ -114,37 +113,6 @@ export default function ConnectSources() {
     }
   };
 
-  const handleLinkedInConnect = async () => {
-    setIsConnectingLinkedIn(true);
-
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'linkedin_oidc',
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-          scopes: 'openid profile email'
-        }
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      toast({
-        title: "Connecting to LinkedIn",
-        description: "Redirecting to LinkedIn for authentication...",
-      });
-
-    } catch (error: any) {
-      console.error('LinkedIn OAuth error:', error);
-      toast({
-        title: "❌ Connection Failed",
-        description: error.message || "Failed to connect to LinkedIn",
-        variant: "destructive",
-      });
-      setIsConnectingLinkedIn(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-hero">
@@ -182,14 +150,14 @@ export default function ConnectSources() {
           className="text-center mb-12"
         >
           <h1 className="text-4xl font-bold text-foreground mb-4">
-            Connect Your Professional Profiles
+            Connect Your GitHub Profile
           </h1>
           <p className="text-muted-foreground text-lg">
-            Import skills from GitHub and LinkedIn to build a comprehensive skill profile
+            Import skills from your GitHub repositories and contributions
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="max-w-2xl mx-auto">
           {/* GitHub Card */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -268,63 +236,6 @@ export default function ConnectSources() {
             </Card>
           </motion.div>
 
-          {/* LinkedIn Card */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-          >
-            <Card className="border-2 h-full">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Linkedin className="h-6 w-6 text-[#0077B5]" />
-                  LinkedIn Integration
-                </CardTitle>
-                <CardDescription>
-                  Connect your LinkedIn profile for professional insights
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Connect your LinkedIn account to import your professional profile data.
-                  </p>
-                  <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                    <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>
-                      LinkedIn's OAuth provides limited data. For comprehensive analysis, 
-                      we recommend uploading your CV as well.
-                    </span>
-                  </div>
-                </div>
-
-                <Button 
-                  onClick={handleLinkedInConnect}
-                  disabled={isConnectingLinkedIn}
-                  className="w-full bg-[#0077B5] hover:bg-[#006399]"
-                >
-                  {isConnectingLinkedIn ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      <Linkedin className="mr-2 h-4 w-4" />
-                      Connect LinkedIn
-                    </>
-                  )}
-                </Button>
-
-                <div className="text-xs text-muted-foreground mt-4">
-                  <p>✓ Imports basic profile information</p>
-                  <p>✓ Professional identity verification</p>
-                  <p>✓ Secure OAuth authentication</p>
-                  <p>✓ No password sharing required</p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
         </div>
 
         {/* Info Section */}
@@ -336,9 +247,9 @@ export default function ConnectSources() {
         >
           <Card>
             <CardHeader>
-              <CardTitle>Multi-Source Skill Aggregation</CardTitle>
+              <CardTitle>GitHub Analysis Benefits</CardTitle>
               <CardDescription>
-                SkillSense combines data from multiple sources to create a comprehensive skill profile
+                Comprehensive skill extraction from your code contributions
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
@@ -346,13 +257,16 @@ export default function ConnectSources() {
                 📄 <strong>CV Analysis:</strong> Upload your resume for detailed skill extraction and career insights
               </p>
               <p>
-                💻 <strong>GitHub:</strong> Analyzes your code repositories, languages, and open-source contributions
+                💻 <strong>GitHub:</strong> Analyzes your code repositories, programming languages, frameworks, and open-source contributions
               </p>
               <p>
-                👔 <strong>LinkedIn:</strong> Imports professional profile data and career trajectory
+                📝 <strong>Blogs & Articles:</strong> Extract technical skills from your published content
+              </p>
+              <p>
+                📊 <strong>Performance Reviews:</strong> Import professional assessments for comprehensive skill tracking
               </p>
               <p className="pt-3 text-xs">
-                All data is processed securely and stored in your private profile. You control what information is shared.
+                All data is processed securely with AI and stored in your private profile. You control what information is shared.
               </p>
             </CardContent>
           </Card>

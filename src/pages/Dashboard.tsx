@@ -145,6 +145,9 @@ const Dashboard = () => {
             <Button variant="outline" onClick={() => navigate("/goals")}>
               Goals
             </Button>
+            <Button variant="outline" onClick={() => navigate("/learning-path")}>
+              Learning Path
+            </Button>
             <Button variant="outline" onClick={() => navigate("/jobs")}>
               Job Match
             </Button>
