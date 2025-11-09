@@ -16,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ocrService } from "@/services/ocrService";
 
 const JobMatching = () => {
   const navigate = useNavigate();
@@ -160,8 +161,13 @@ What We Offer:
           category
         )
       `)
+      .eq('user_id', user?.id as string)
       .order('confidence_score', { ascending: false })
       .limit(10);
+
+    if (error) {
+      console.error('Error fetching user skills:', error);
+    }
 
     console.log('✅ Skills check result:', { hasData: data && data.length > 0, count: data?.length });
     setHasSkills(data && data.length > 0);
@@ -383,7 +389,7 @@ What We Offer:
     }
 
     const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
-    if (!validTypes.includes(file.type)) {
+    if (!validTypes.includes(file.type) && !file.name.toLowerCase().endsWith('.pdf') && !file.name.toLowerCase().endsWith('.txt') && !file.name.toLowerCase().endsWith('.docx')) {
       toast({
         title: "Invalid File Type",
         description: "Please upload a PDF, DOCX, or TXT file.",
@@ -396,41 +402,37 @@ What We Offer:
     setCvFileName(file.name);
 
     try {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const content = e.target?.result as string;
-        
-        toast({
-          title: "Processing CV...",
-          description: "Extracting skills from your CV. This may take a moment.",
-        });
+      // Extract text robustly (PDF/TXT, images fallback) for accurate skills
+      const { text } = await ocrService.processDocument(file);
 
-        const { data, error } = await supabase.functions.invoke('analyze-cv', {
-          body: { cvText: content }
-        });
+      toast({
+        title: "Processing CV...",
+        description: "Extracting skills from your CV. This may take a moment.",
+      });
 
-        if (error) {
-          console.error('Error analyzing CV:', error);
-          throw error;
-        }
+      const { data, error } = await supabase.functions.invoke('analyze-cv', {
+        body: { cvText: text }
+      });
 
-        if (data?.error) {
-          throw new Error(data.details || data.error);
-        }
+      if (error) {
+        console.error('Error analyzing CV:', error);
+        throw error;
+      }
 
-        toast({
-          title: "CV Analyzed Successfully!",
-          description: `Found ${data.skills?.length || 0} skills. You can now analyze job descriptions.`,
-        });
+      if (data?.error) {
+        throw new Error(data.details || data.error);
+      }
 
-        // Refresh skills
-        await checkUserSkills();
-        
-        // Clear the result if there was a previous one
-        setMatchResult(null);
-      };
+      toast({
+        title: "CV Analyzed Successfully!",
+        description: `Found ${data.skills?.length || 0} skills. You can now analyze job descriptions.`,
+      });
 
-      reader.readAsText(file);
+      // Refresh skills
+      await checkUserSkills();
+      
+      // Clear the result if there was a previous one
+      setMatchResult(null);
     } catch (error) {
       console.error('Failed to analyze CV:', error);
       toast({
