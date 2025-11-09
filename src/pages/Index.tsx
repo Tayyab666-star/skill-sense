@@ -74,6 +74,9 @@ const Index = () => {
             animate={{ opacity: 1, x: 0 }}
           >
             <div className="flex gap-4">
+              <Button onClick={() => navigate("/guide")} variant="outline">
+                User Guide
+              </Button>
               <Button onClick={() => navigate("/auth")} variant="ghost">
                 Sign In
               </Button>

@@ -14,6 +14,7 @@ import JobMatching from "./pages/JobMatching";
 import TeamAnalysis from "./pages/TeamAnalysis";
 import Settings from "./pages/Settings";
 import LearningPath from "./pages/LearningPath";
+import UserGuide from "./pages/UserGuide";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/team" element={<TeamAnalysis />} />
           <Route path="/learning-path" element={<LearningPath />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/guide" element={<UserGuide />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -307,8 +307,17 @@ const JobMatching = () => {
       }
 
       setMatchResult(data);
+      toast({
+        title: "Analysis Complete",
+        description: `Match score: ${data.matchScore}%`,
+      });
     } catch (error) {
       console.error('Failed to analyze job match:', error);
+      toast({
+        title: "Analysis Failed",
+        description: error instanceof Error ? error.message : "Please upload your CV first to get accurate matches.",
+        variant: "destructive",
+      });
       setMatchResult({
         matchScore: 0,
         matchingSkills: [],
@@ -338,6 +347,9 @@ const JobMatching = () => {
             </span>
           </div>
           <div className="flex gap-4">
+            <Button variant="outline" onClick={() => navigate("/guide")}>
+              User Guide
+            </Button>
             <Button variant="outline" onClick={() => navigate("/dashboard")}>
               Dashboard
             </Button>
@@ -463,7 +475,7 @@ const JobMatching = () => {
                 />
                 <Button
                   onClick={analyzeJobMatch}
-                  disabled={!jobDescription.trim() || analyzing || hasSkills === false}
+                  disabled={!jobDescription.trim() || analyzing}
                   className="w-full"
                 >
                   {analyzing ? (

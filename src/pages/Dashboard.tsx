@@ -132,6 +132,9 @@ const Dashboard = () => {
             </span>
           </div>
           <div className="flex gap-3 flex-wrap">
+            <Button variant="outline" onClick={() => navigate("/guide")}>
+              User Guide
+            </Button>
             <Button variant="outline" onClick={() => navigate("/upload")}>
               <Upload className="mr-2 h-4 w-4" />
               Upload CV
