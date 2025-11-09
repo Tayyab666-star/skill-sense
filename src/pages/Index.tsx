@@ -73,10 +73,15 @@ const Index = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
           >
-            <Button onClick={() => navigate("/upload")} className="bg-primary hover:bg-primary/90">
-              <Upload className="mr-2 h-4 w-4" />
-              Get Started
-            </Button>
+            <div className="flex gap-4">
+              <Button onClick={() => navigate("/auth")} variant="ghost">
+                Sign In
+              </Button>
+              <Button onClick={() => navigate("/auth")} className="bg-primary hover:bg-primary/90">
+                <Upload className="mr-2 h-4 w-4" />
+                Get Started
+              </Button>
+            </div>
           </motion.div>
         </div>
       </nav>
@@ -120,7 +125,7 @@ const Index = () => {
           >
             <Button 
               size="lg" 
-              onClick={() => navigate("/upload")}
+              onClick={() => navigate("/auth")}
               className="bg-primary hover:bg-primary/90 text-lg px-8 h-14 shadow-glow group"
             >
               <Zap className="mr-2 h-5 w-5 group-hover:rotate-12 transition-transform" />
@@ -129,10 +134,10 @@ const Index = () => {
             <Button 
               size="lg" 
               variant="outline"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/auth")}
               className="text-lg px-8 h-14 border-2"
             >
-              View Dashboard
+              Sign In
             </Button>
           </motion.div>
 
@@ -322,7 +327,7 @@ const Index = () => {
           </p>
           <Button 
             size="lg"
-            onClick={() => navigate("/upload")}
+            onClick={() => navigate("/auth")}
             className="bg-white text-primary hover:bg-white/90 text-lg px-8 h-14 shadow-lg"
           >
             <Upload className="mr-2 h-5 w-5" />
