@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Brain, Briefcase, Target, TrendingUp, Search, Sparkles, Check, X, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +19,7 @@ import {
 
 const JobMatching = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [jobDescription, setJobDescription] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [matchResult, setMatchResult] = useState<any>(null);
@@ -32,9 +34,18 @@ const JobMatching = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadJobs();
-    checkUserSkills();
-  }, []);
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      loadJobs();
+      checkUserSkills();
+      loadJobApplications();
+    }
+  }, [user]);
 
   // Auto-match jobs when skills are loaded
   useEffect(() => {
@@ -46,14 +57,48 @@ const JobMatching = () => {
   // Recheck skills when page becomes visible
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
+      if (!document.hidden && user) {
         checkUserSkills();
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
+  }, [user]);
+
+  // Realtime subscription for skills updates
+  useEffect(() => {
+    if (!user) return;
+
+    console.log('🔄 Setting up realtime subscription for user_skills...');
+    
+    const channel = supabase
+      .channel('user_skills_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'user_skills',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('✨ New skill detected via realtime:', payload);
+          toast({
+            title: "Skills Updated!",
+            description: "Your profile has been updated with new skills from your CV.",
+          });
+          checkUserSkills();
+          loadJobApplications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🔌 Unsubscribing from realtime channel');
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const checkUserSkills = async () => {
     console.log('🔍 Checking user skills...');
@@ -126,14 +171,42 @@ const JobMatching = () => {
 
     const sortedJobs = jobsWithScores.sort((a, b) => b.matchScore - a.matchScore);
     
-    setMatchedJobs(sortedJobs);
+    // Apply status filter
+    let filteredJobs = sortedJobs;
+    if (statusFilter !== "all") {
+      filteredJobs = sortedJobs.filter(job => {
+        const app = jobApplications[job.id];
+        if (statusFilter === "none") return !app;
+        return app?.status === statusFilter;
+      });
+    }
+    
+    setMatchedJobs(filteredJobs);
     setLoadingMatches(false);
     
-    console.log('✅ Job matches calculated:', sortedJobs.length);
+    console.log('✅ Job matches calculated:', filteredJobs.length);
   };
 
   const getStatusBadge = (jobId: string) => {
-    return null;
+    const app = jobApplications[jobId];
+    if (!app) return null;
+
+    const statusConfig = {
+      interested: { icon: Star, color: "bg-blue-500", text: "Interested" },
+      applied: { icon: Check, color: "bg-green-500", text: "Applied" },
+      rejected: { icon: X, color: "bg-red-500", text: "Rejected" }
+    };
+
+    const config = statusConfig[app.status as keyof typeof statusConfig];
+    if (!config) return null;
+
+    const Icon = config.icon;
+    return (
+      <Badge className={`${config.color} text-white`}>
+        <Icon className="h-3 w-3 mr-1" />
+        {config.text}
+      </Badge>
+    );
   };
 
   const loadJobs = async () => {
@@ -148,12 +221,62 @@ const JobMatching = () => {
     }
   };
 
+  const loadJobApplications = async () => {
+    const { data, error } = await supabase
+      .from("job_applications")
+      .select("*");
+
+    if (data) {
+      const applicationsMap = data.reduce((acc, app) => {
+        acc[app.job_id] = app;
+        return acc;
+      }, {} as Record<string, any>);
+      setJobApplications(applicationsMap);
+    }
+  };
+
   const updateJobStatus = async (jobId: string, status: 'interested' | 'applied' | 'rejected') => {
-    toast({
-      title: "Feature Unavailable",
-      description: "Job tracking requires authentication",
-      variant: "destructive",
-    });
+    const existingApp = jobApplications[jobId];
+    
+    try {
+      if (existingApp) {
+        const { error } = await supabase
+          .from("job_applications")
+          .update({ 
+            status,
+            applied_date: status === 'applied' ? new Date().toISOString() : existingApp.applied_date,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", existingApp.id);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("job_applications")
+          .insert([{
+            job_id: jobId,
+            user_id: user?.id as string,
+            status,
+            applied_date: status === 'applied' ? new Date().toISOString() : null
+          }]);
+
+        if (error) throw error;
+      }
+
+      await loadJobApplications();
+      
+      toast({
+        title: "Status Updated",
+        description: `Job marked as ${status}`,
+      });
+    } catch (error) {
+      console.error("Error updating job status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update job status",
+        variant: "destructive",
+      });
+    }
   };
 
   const runDemoAnalysis = () => {
@@ -249,6 +372,10 @@ const JobMatching = () => {
       setAnalyzing(false);
     }
   };
+
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-hero">
@@ -471,9 +598,35 @@ const JobMatching = () => {
                     <CardDescription>
                       {hasSkills 
                         ? "Jobs ranked by how well they match your skills"
-                        : "Upload your CV for personalized matches"}
+                        : "Sign in and upload your CV for personalized matches"}
                     </CardDescription>
                   </div>
+                  {hasSkills && matchedJobs.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          Filter: {statusFilter === "all" ? "All" : statusFilter === "none" ? "No Status" : statusFilter}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setStatusFilter("all")}>
+                          All Jobs
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatusFilter("none")}>
+                          No Status
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatusFilter("interested")}>
+                          Interested
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatusFilter("applied")}>
+                          Applied
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatusFilter("rejected")}>
+                          Rejected
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -484,11 +637,14 @@ const JobMatching = () => {
                   </div>
                 ) : hasSkills && matchedJobs.length > 0 ? (
                   matchedJobs.map((job, idx) => (
-                     <div key={idx} className="p-4 border border-border rounded-lg hover:shadow-md transition-shadow">
-                       <div className="flex justify-between items-start mb-2">
-                         <div className="flex-1">
-                           <h4 className="font-semibold">{job.title}</h4>
-                           <p className="text-sm text-muted-foreground">{job.company}</p>
+                    <div key={idx} className="p-4 border border-border rounded-lg hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-semibold">{job.title}</h4>
+                            {getStatusBadge(job.id)}
+                          </div>
+                          <p className="text-sm text-muted-foreground">{job.company}</p>
                           {job.location && (
                             <p className="text-xs text-muted-foreground mt-1">{job.location}</p>
                           )}
@@ -533,12 +689,38 @@ const JobMatching = () => {
                             </div>
                           </div>
                         )}
-                       </div>
+                        </div>
 
-                       <Button variant="outline" size="sm" className="mt-3 w-full">
-                         View Details
-                       </Button>
-                     </div>
+                        <div className="mt-3 flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={() => updateJobStatus(job.id, 'interested')}
+                          >
+                            <Star className="h-4 w-4 mr-1" />
+                            Interested
+                          </Button>
+                          <Button 
+                            variant="default" 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={() => updateJobStatus(job.id, 'applied')}
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Applied
+                          </Button>
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={() => updateJobStatus(job.id, 'rejected')}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Reject
+                          </Button>
+                        </div>
+                      </div>
                   ))
                 ) : jobs.length > 0 ? (
                   jobs.map((job, idx) => (

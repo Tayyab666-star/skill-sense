@@ -1,12 +1,21 @@
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Brain, Users, TrendingUp, AlertCircle, Award } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
 
 const TeamAnalysis = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
 
   const teamStats = {
     totalMembers: 12,
@@ -33,6 +42,10 @@ const TeamAnalysis = () => {
     { name: "Mike Chen", skills: ["Python", "Data Analysis", "AWS"], count: 7 },
     { name: "Emily Davis", skills: ["UI/UX Design", "Project Management"], count: 6 },
   ];
+
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-hero">
