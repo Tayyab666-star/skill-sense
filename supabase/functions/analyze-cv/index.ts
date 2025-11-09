@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -169,6 +170,90 @@ Provide comprehensive skill analysis with evidence, proficiency levels, career i
     console.log('  - Skills found:', analysis.skills.length);
     console.log('  - Insights generated:', analysis.insights?.length || 0);
     console.log('  - Overall score:', analysis.overallScore);
+
+    // Persist recognized skills into user_skills for the authenticated user
+    try {
+      const authHeader = req.headers.get('authorization') || '';
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        { global: { headers: { Authorization: authHeader } } }
+      );
+
+      const { data: { user }, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !user) {
+        console.log('⚠️ Cannot persist skills - user not authenticated');
+      } else {
+        const uniqueNames = Array.from(new Set((analysis.skills as SkillAnalysis[])
+          .map(s => s.name.trim()).filter(Boolean)));
+
+        const matched: { name: string; id: string }[] = [];
+        for (const name of uniqueNames) {
+          // Try case-insensitive name match first
+          const byName = await supabase
+            .from('skill_framework')
+            .select('id,name,keywords')
+            .ilike('name', name)
+            .maybeSingle();
+
+          if (byName.data) {
+            matched.push({ name, id: byName.data.id });
+            continue;
+          }
+
+          // Try keywords contains
+          const keywordsTry = await supabase
+            .from('skill_framework')
+            .select('id,name,keywords')
+            .contains('keywords', [name.toLowerCase()]);
+
+          if (keywordsTry.data && keywordsTry.data.length > 0) {
+            matched.push({ name, id: keywordsTry.data[0].id });
+          }
+        }
+
+        const ids = matched.map(m => m.id);
+        if (ids.length) {
+          const { data: existing } = await supabase
+            .from('user_skills')
+            .select('id,skill_id')
+            .eq('user_id', user.id)
+            .in('skill_id', ids);
+
+          const existingIds = new Set((existing || []).map(r => r.skill_id));
+
+          const rows = (analysis.skills as SkillAnalysis[])
+            .filter(s => matched.some(m => m.name === s.name))
+            .map(s => {
+              const mid = matched.find(m => m.name === s.name)!.id;
+              return {
+                user_id: user.id,
+                skill_id: mid,
+                proficiency_level: s.proficiencyLevel, // matches enum values
+                is_explicit: s.isExplicit,
+                confidence_score: Math.round(s.confidence),
+                evidence: (s.evidence || []).slice(0, 3),
+              };
+            })
+            .filter(r => !existingIds.has(r.skill_id));
+
+          if (rows.length) {
+            const { error: insErr } = await supabase.from('user_skills').insert(rows);
+            if (insErr) {
+              console.warn('⚠️ Failed to persist some skills:', insErr);
+            } else {
+              console.log(`🗃️ Persisted ${rows.length} new user_skills rows`);
+            }
+          } else {
+            console.log('ℹ️ No new user_skills to add');
+          }
+        } else {
+          console.log('ℹ️ No skills matched the framework; skipping persistence');
+        }
+      }
+    } catch (persistErr) {
+      console.warn('⚠️ Error while persisting skills:', persistErr);
+    }
 
     return new Response(
       JSON.stringify(analysis),
