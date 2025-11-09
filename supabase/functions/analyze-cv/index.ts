@@ -142,12 +142,26 @@ Provide comprehensive skill analysis with evidence, proficiency levels, career i
     // Parse AI response (handle both markdown code blocks and raw JSON)
     let analysis;
     try {
-      // Remove markdown code blocks if present
-      const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/) || content.match(/(\{[\s\S]*\})/);
-      const jsonStr = jsonMatch ? jsonMatch[1] : content;
+      // Remove markdown code blocks if present - use lazy matching
+      let jsonStr = content.trim();
+      
+      // Try to extract JSON from markdown code blocks
+      const markdownMatch = jsonStr.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+      if (markdownMatch) {
+        jsonStr = markdownMatch[1];
+      } else {
+        // Try to find JSON object directly
+        const jsonMatch = jsonStr.match(/(\{[\s\S]*\})/);
+        if (jsonMatch) {
+          jsonStr = jsonMatch[1];
+        }
+      }
+      
       analysis = JSON.parse(jsonStr.trim());
     } catch (parseError) {
-      console.error("Failed to parse AI response:", content);
+      console.error("Failed to parse AI response. Error:", parseError);
+      console.error("Content preview (first 500 chars):", content.substring(0, 500));
+      console.error("Content preview (last 500 chars):", content.substring(content.length - 500));
       throw new Error("Failed to parse AI analysis result");
     }
 
