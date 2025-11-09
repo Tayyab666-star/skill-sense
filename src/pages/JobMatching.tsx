@@ -4,11 +4,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
-import { Brain, Briefcase, Target, TrendingUp, Search, Sparkles } from "lucide-react";
+import { Brain, Briefcase, Target, TrendingUp, Search, Sparkles, Check, X, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
+import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const JobMatching = () => {
   const navigate = useNavigate();
@@ -22,6 +29,9 @@ const JobMatching = () => {
   const [userSkills, setUserSkills] = useState<any[]>([]);
   const [matchedJobs, setMatchedJobs] = useState<any[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(false);
+  const [jobApplications, setJobApplications] = useState<Record<string, any>>({});
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -33,6 +43,7 @@ const JobMatching = () => {
     if (user) {
       loadJobs();
       checkUserSkills();
+      loadJobApplications();
     }
   }, [user]);
 
@@ -125,10 +136,43 @@ const JobMatching = () => {
     });
 
     const sortedJobs = jobsWithScores.sort((a, b) => b.matchScore - a.matchScore);
-    setMatchedJobs(sortedJobs);
+    
+    // Apply status filter
+    let filteredJobs = sortedJobs;
+    if (statusFilter !== "all") {
+      filteredJobs = sortedJobs.filter(job => {
+        const app = jobApplications[job.id];
+        if (statusFilter === "none") return !app;
+        return app?.status === statusFilter;
+      });
+    }
+    
+    setMatchedJobs(filteredJobs);
     setLoadingMatches(false);
     
-    console.log('✅ Job matches calculated:', sortedJobs.length);
+    console.log('✅ Job matches calculated:', filteredJobs.length);
+  };
+
+  const getStatusBadge = (jobId: string) => {
+    const app = jobApplications[jobId];
+    if (!app) return null;
+
+    const statusConfig = {
+      interested: { icon: Star, color: "bg-blue-500", text: "Interested" },
+      applied: { icon: Check, color: "bg-green-500", text: "Applied" },
+      rejected: { icon: X, color: "bg-red-500", text: "Rejected" }
+    };
+
+    const config = statusConfig[app.status as keyof typeof statusConfig];
+    if (!config) return null;
+
+    const Icon = config.icon;
+    return (
+      <Badge className={`${config.color} text-white`}>
+        <Icon className="h-3 w-3 mr-1" />
+        {config.text}
+      </Badge>
+    );
   };
 
   const loadJobs = async () => {
@@ -140,6 +184,64 @@ const JobMatching = () => {
 
     if (data) {
       setJobs(data);
+    }
+  };
+
+  const loadJobApplications = async () => {
+    const { data, error } = await supabase
+      .from("job_applications")
+      .select("*");
+
+    if (data) {
+      const applicationsMap = data.reduce((acc, app) => {
+        acc[app.job_id] = app;
+        return acc;
+      }, {} as Record<string, any>);
+      setJobApplications(applicationsMap);
+    }
+  };
+
+  const updateJobStatus = async (jobId: string, status: 'interested' | 'applied' | 'rejected') => {
+    const existingApp = jobApplications[jobId];
+    
+    try {
+      if (existingApp) {
+        const { error } = await supabase
+          .from("job_applications")
+          .update({ 
+            status,
+            applied_date: status === 'applied' ? new Date().toISOString() : existingApp.applied_date,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", existingApp.id);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("job_applications")
+          .insert([{
+            job_id: jobId,
+            user_id: user?.id as string,
+            status,
+            applied_date: status === 'applied' ? new Date().toISOString() : null
+          }]);
+
+        if (error) throw error;
+      }
+
+      await loadJobApplications();
+      
+      toast({
+        title: "Status Updated",
+        description: `Job marked as ${status}`,
+      });
+    } catch (error) {
+      console.error("Error updating job status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update job status",
+        variant: "destructive",
+      });
     }
   };
 
@@ -433,15 +535,45 @@ const JobMatching = () => {
           >
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Briefcase className="h-5 w-5 text-primary" />
-                  {hasSkills ? "Auto-Matched Jobs" : "Available Jobs"}
-                </CardTitle>
-                <CardDescription>
-                  {hasSkills 
-                    ? "Jobs ranked by how well they match your skills"
-                    : "Sign in and upload your CV for personalized matches"}
-                </CardDescription>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Briefcase className="h-5 w-5 text-primary" />
+                      {hasSkills ? "Auto-Matched Jobs" : "Available Jobs"}
+                    </CardTitle>
+                    <CardDescription>
+                      {hasSkills 
+                        ? "Jobs ranked by how well they match your skills"
+                        : "Sign in and upload your CV for personalized matches"}
+                    </CardDescription>
+                  </div>
+                  {hasSkills && matchedJobs.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          Filter: {statusFilter === "all" ? "All" : statusFilter === "none" ? "No Status" : statusFilter}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setStatusFilter("all")}>
+                          All Jobs
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatusFilter("none")}>
+                          No Status
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatusFilter("interested")}>
+                          Interested
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatusFilter("applied")}>
+                          Applied
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setStatusFilter("rejected")}>
+                          Rejected
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {loadingMatches ? (
@@ -453,8 +585,11 @@ const JobMatching = () => {
                   matchedJobs.map((job, idx) => (
                     <div key={idx} className="p-4 border border-border rounded-lg hover:shadow-md transition-shadow">
                       <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h4 className="font-semibold">{job.title}</h4>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-semibold">{job.title}</h4>
+                            {getStatusBadge(job.id)}
+                          </div>
                           <p className="text-sm text-muted-foreground">{job.company}</p>
                           {job.location && (
                             <p className="text-xs text-muted-foreground mt-1">{job.location}</p>
@@ -502,9 +637,35 @@ const JobMatching = () => {
                         )}
                       </div>
 
-                      <Button variant="outline" size="sm" className="mt-3 w-full">
-                        View Details
-                      </Button>
+                      <div className="mt-3 flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => updateJobStatus(job.id, 'interested')}
+                        >
+                          <Star className="h-4 w-4 mr-1" />
+                          Interested
+                        </Button>
+                        <Button 
+                          variant="default" 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => updateJobStatus(job.id, 'applied')}
+                        >
+                          <Check className="h-4 w-4 mr-1" />
+                          Applied
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => updateJobStatus(job.id, 'rejected')}
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Reject
+                        </Button>
+                      </div>
                     </div>
                   ))
                 ) : jobs.length > 0 ? (

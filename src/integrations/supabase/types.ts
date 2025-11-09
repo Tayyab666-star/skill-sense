@@ -154,6 +154,47 @@ export type Database = {
           },
         ]
       }
+      job_applications: {
+        Row: {
+          applied_date: string | null
+          created_at: string | null
+          id: string
+          job_id: string
+          notes: string | null
+          status: Database["public"]["Enums"]["application_status"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          applied_date?: string | null
+          created_at?: string | null
+          id?: string
+          job_id: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          applied_date?: string | null
+          created_at?: string | null
+          id?: string
+          job_id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_applications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "job_postings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_matches: {
         Row: {
           analysis: Json | null
@@ -709,6 +750,7 @@ export type Database = {
       }
     }
     Enums: {
+      application_status: "interested" | "applied" | "rejected"
       data_source_type:
         | "cv"
         | "linkedin"
@@ -854,6 +896,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      application_status: ["interested", "applied", "rejected"],
       data_source_type: [
         "cv",
         "linkedin",
