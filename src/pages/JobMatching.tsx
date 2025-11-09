@@ -33,12 +33,26 @@ const JobMatching = () => {
     }
   }, [user]);
 
+  // Recheck skills when page becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && user) {
+        checkUserSkills();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [user]);
+
   const checkUserSkills = async () => {
+    console.log('🔍 Checking user skills...');
     const { data, error } = await supabase
       .from("user_skills")
       .select("id")
       .limit(1);
 
+    console.log('✅ Skills check result:', { hasData: data && data.length > 0, count: data?.length });
     setHasSkills(data && data.length > 0);
   };
 
@@ -213,6 +227,21 @@ const JobMatching = () => {
                         Try Demo
                       </Button>
                     </div>
+                  </div>
+                )}
+                {hasSkills === true && (
+                  <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20 mb-4">
+                    <div className="flex items-center gap-2">
+                      <Target className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">CV uploaded - Ready for analysis</span>
+                    </div>
+                    <Button
+                      onClick={checkUserSkills}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      Refresh
+                    </Button>
                   </div>
                 )}
                 <Textarea
