@@ -36,6 +36,52 @@ const JobMatching = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  const sampleJobDescription = `Senior Full Stack Developer
+
+About the Role:
+We are seeking an experienced Full Stack Developer to join our growing engineering team. You will be responsible for building scalable web applications and contributing to our product architecture.
+
+Key Responsibilities:
+• Design and develop full-stack web applications using modern frameworks
+• Write clean, maintainable, and well-documented code
+• Collaborate with cross-functional teams to define and ship new features
+• Optimize application performance and ensure scalability
+• Participate in code reviews and mentor junior developers
+• Troubleshoot and debug production issues
+
+Required Skills & Qualifications:
+• 5+ years of professional software development experience
+• Strong proficiency in JavaScript/TypeScript and React
+• Experience with Node.js and RESTful API development
+• Solid understanding of database design (SQL and NoSQL)
+• Experience with Git version control and CI/CD pipelines
+• Strong problem-solving and analytical skills
+• Excellent communication and teamwork abilities
+• Bachelor's degree in Computer Science or related field
+
+Preferred Skills:
+• Experience with cloud platforms (AWS, Google Cloud, or Azure)
+• Knowledge of Docker and Kubernetes
+• Familiarity with GraphQL
+• Experience with testing frameworks (Jest, Cypress)
+• Understanding of microservices architecture
+• Previous experience in Agile/Scrum environments
+
+What We Offer:
+• Competitive salary and equity package
+• Flexible remote work options
+• Professional development opportunities
+• Health and wellness benefits
+• Collaborative and innovative team culture`;
+
+  const fillSampleJob = () => {
+    setJobDescription(sampleJobDescription);
+    toast({
+      title: "Sample Job Loaded",
+      description: "Example job description added. Click Analyze Match to test!",
+    });
+  };
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth");
@@ -675,12 +721,27 @@ const JobMatching = () => {
                     </div>
                   </div>
                 )}
-                <Textarea
-                  placeholder="Paste the full job description here (requirements, responsibilities, qualifications, etc.)..."
-                  value={jobDescription}
-                  onChange={(e) => setJobDescription(e.target.value)}
-                  className="min-h-[200px] text-sm"
-                />
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Job Description</label>
+                    <Button
+                      onClick={fillSampleJob}
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      disabled={uploadingCV}
+                    >
+                      <FileText className="mr-1.5 h-3 w-3" />
+                      Load Sample Job
+                    </Button>
+                  </div>
+                  <Textarea
+                    placeholder="Paste the full job description here (requirements, responsibilities, qualifications, etc.)..."
+                    value={jobDescription}
+                    onChange={(e) => setJobDescription(e.target.value)}
+                    className="min-h-[200px] text-sm"
+                  />
+                </div>
                 
                 {jobDescription.trim() && (
                   <div className="text-xs text-muted-foreground flex items-center gap-1">
