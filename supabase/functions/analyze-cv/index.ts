@@ -46,44 +46,7 @@ serve(async (req) => {
     console.log('🎯 Extracted skills:', extractedSkills?.length || 0);
 
     // System prompt for skill analysis
-    const systemPrompt = `You are an expert career analyst and skill extraction AI. Your task is to analyze CVs/resumes and extract comprehensive skill information.
-
-For each skill mentioned or implied in the CV, you must:
-1. Identify the skill name
-2. Categorize it (Technical, Soft, Domain, or Language)
-3. Determine if it's explicitly mentioned or implied
-4. Find evidence/context where it appears
-5. Assess proficiency level (Beginner, Intermediate, Advanced, Expert)
-6. Calculate confidence score (0-100)
-
-Also provide:
-- Career insights about strengths, gaps, and recommendations
-- Overall profile summary
-- Skill distribution analysis
-
-Return ONLY a valid JSON object with this exact structure:
-{
-  "skills": [
-    {
-      "name": "skill name",
-      "category": "Technical|Soft|Domain|Language",
-      "confidence": 85,
-      "isExplicit": true,
-      "evidence": ["context where mentioned"],
-      "proficiencyLevel": "Expert|Advanced|Intermediate|Beginner"
-    }
-  ],
-  "insights": [
-    {
-      "title": "insight title",
-      "description": "detailed description",
-      "priority": "high|medium|low",
-      "category": "strength|gap|recommendation"
-    }
-  ],
-  "summary": "overall analysis summary",
-  "overallScore": 85
-}`;
+    const systemPrompt = `You are an expert career analyst and skill extraction AI. Analyze CVs/resumes and extract comprehensive skill information.`;
 
     const userPrompt = `Analyze this CV and extract all skills (both explicit and implicit):
 
@@ -94,7 +57,7 @@ ${extractedSkills && extractedSkills.length > 0 ? `\nPreviously identified skill
 
 Provide comprehensive skill analysis with evidence, proficiency levels, career insights, and an overall score.`;
 
-    // Call Lovable AI
+    // Call Lovable AI with tool calling for structured output
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -107,8 +70,55 @@ Provide comprehensive skill analysis with evidence, proficiency levels, career i
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        temperature: 0.7,
-        max_tokens: 4000,
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "analyze_cv",
+              description: "Extract skills and insights from a CV/resume",
+              parameters: {
+                type: "object",
+                properties: {
+                  skills: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string" },
+                        category: { type: "string", enum: ["Technical", "Soft", "Domain", "Language"] },
+                        confidence: { type: "number", minimum: 0, maximum: 100 },
+                        isExplicit: { type: "boolean" },
+                        evidence: { type: "array", items: { type: "string" } },
+                        proficiencyLevel: { type: "string", enum: ["Beginner", "Intermediate", "Advanced", "Expert"] }
+                      },
+                      required: ["name", "category", "confidence", "isExplicit", "evidence", "proficiencyLevel"],
+                      additionalProperties: false
+                    }
+                  },
+                  insights: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        description: { type: "string" },
+                        priority: { type: "string", enum: ["high", "medium", "low"] },
+                        category: { type: "string", enum: ["strength", "gap", "recommendation"] }
+                      },
+                      required: ["title", "description", "priority", "category"],
+                      additionalProperties: false
+                    }
+                  },
+                  summary: { type: "string" },
+                  overallScore: { type: "number", minimum: 0, maximum: 100 }
+                },
+                required: ["skills", "insights", "summary", "overallScore"],
+                additionalProperties: false
+              }
+            }
+          }
+        ],
+        tool_choice: { type: "function", function: { name: "analyze_cv" } }
       }),
     });
 
@@ -131,37 +141,22 @@ Provide comprehensive skill analysis with evidence, proficiency levels, career i
     }
 
     const aiData = await aiResponse.json();
-    const content = aiData.choices?.[0]?.message?.content;
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
 
-    if (!content) {
-      throw new Error("No response from AI");
+    if (!toolCall || toolCall.function.name !== "analyze_cv") {
+      console.error("No tool call in response:", JSON.stringify(aiData, null, 2));
+      throw new Error("AI did not return structured output");
     }
 
-    console.log('✅ AI analysis completed');
+    console.log('✅ AI analysis completed with tool calling');
 
-    // Parse AI response (handle both markdown code blocks and raw JSON)
+    // Parse the structured output from tool calling
     let analysis;
     try {
-      // Remove markdown code blocks if present - use lazy matching
-      let jsonStr = content.trim();
-      
-      // Try to extract JSON from markdown code blocks
-      const markdownMatch = jsonStr.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-      if (markdownMatch) {
-        jsonStr = markdownMatch[1];
-      } else {
-        // Try to find JSON object directly
-        const jsonMatch = jsonStr.match(/(\{[\s\S]*\})/);
-        if (jsonMatch) {
-          jsonStr = jsonMatch[1];
-        }
-      }
-      
-      analysis = JSON.parse(jsonStr.trim());
+      analysis = JSON.parse(toolCall.function.arguments);
     } catch (parseError) {
-      console.error("Failed to parse AI response. Error:", parseError);
-      console.error("Content preview (first 500 chars):", content.substring(0, 500));
-      console.error("Content preview (last 500 chars):", content.substring(content.length - 500));
+      console.error("Failed to parse tool call arguments. Error:", parseError);
+      console.error("Arguments:", toolCall.function.arguments);
       throw new Error("Failed to parse AI analysis result");
     }
 
