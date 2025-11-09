@@ -66,6 +66,40 @@ const JobMatching = () => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [user]);
 
+  // Realtime subscription for skills updates
+  useEffect(() => {
+    if (!user) return;
+
+    console.log('🔄 Setting up realtime subscription for user_skills...');
+    
+    const channel = supabase
+      .channel('user_skills_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'user_skills',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('✨ New skill detected via realtime:', payload);
+          toast({
+            title: "Skills Updated!",
+            description: "Your profile has been updated with new skills from your CV.",
+          });
+          checkUserSkills();
+          loadJobApplications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🔌 Unsubscribing from realtime channel');
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const checkUserSkills = async () => {
     console.log('🔍 Checking user skills...');
     const { data, error } = await supabase
