@@ -259,11 +259,34 @@ Provide a comprehensive, actionable learning roadmap with specific resources, re
     console.log('  - Phases:', learningPath.learningPhases?.length || 0);
     console.log('  - Skill gaps:', learningPath.skillGaps?.length || 0);
 
+    // Save learning path to database
+    const { data: savedPath, error: saveError } = await supabase
+      .from('learning_paths')
+      .insert({
+        user_id: user.id,
+        goal_id: goalId || null,
+        path_title: learningPath.pathTitle || 'Personalized Learning Path',
+        estimated_duration: learningPath.estimatedDuration,
+        path_data: learningPath,
+        version: 1,
+        is_active: true,
+      })
+      .select()
+      .single();
+
+    if (saveError) {
+      console.error('Error saving learning path:', saveError);
+      // Don't fail the request if saving fails, just log it
+    } else {
+      console.log('✅ Learning path saved to database with ID:', savedPath.id);
+    }
+
     return new Response(
       JSON.stringify({
         ...learningPath,
         generatedAt: new Date().toISOString(),
         goalId: goalId || null,
+        savedPathId: savedPath?.id || null,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

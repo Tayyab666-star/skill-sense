@@ -16,11 +16,14 @@ import {
   GraduationCap,
   Lightbulb,
   CheckCircle2,
-  ArrowRight
+  ArrowRight,
+  History,
+  RefreshCw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
+import { format } from "date-fns";
 
 interface Resource {
   title: string;
@@ -93,9 +96,13 @@ export default function LearningPath() {
   const [learningPath, setLearningPath] = useState<LearningPathData | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
+  const [savedPaths, setSavedPaths] = useState<any[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [selectedHistoryPath, setSelectedHistoryPath] = useState<string | null>(null);
 
   useEffect(() => {
     fetchGoals();
+    fetchSavedPaths();
   }, []);
 
   const fetchGoals = async () => {
@@ -120,6 +127,44 @@ export default function LearningPath() {
     }
   };
 
+  const fetchSavedPaths = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('learning_paths')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setSavedPaths(data || []);
+
+      // Load the most recent path if no path is currently loaded
+      if (!learningPath && data && data.length > 0) {
+        const latestPath = data[0];
+        setLearningPath(latestPath.path_data as unknown as LearningPathData);
+        setSelectedHistoryPath(latestPath.id);
+      }
+    } catch (error) {
+      console.error('Error fetching saved paths:', error);
+    }
+  };
+
+  const loadHistoryPath = (pathId: string) => {
+    const path = savedPaths.find(p => p.id === pathId);
+    if (path) {
+      setLearningPath(path.path_data as unknown as LearningPathData);
+      setSelectedHistoryPath(pathId);
+      setShowHistory(false);
+      toast({
+        title: "Learning path loaded",
+        description: `Loaded version from ${format(new Date(path.created_at), 'PPp')}`,
+      });
+    }
+  };
+
   const generateLearningPath = async () => {
     setIsLoading(true);
 
@@ -137,10 +182,11 @@ export default function LearningPath() {
       if (error) throw error;
 
       setLearningPath(data);
+      await fetchSavedPaths(); // Refresh saved paths list
 
       toast({
         title: "🎯 Learning Path Generated!",
-        description: "Your personalized roadmap is ready",
+        description: "Your personalized roadmap is ready and saved",
       });
     } catch (error: any) {
       console.error('Error generating learning path:', error);
@@ -201,17 +247,74 @@ export default function LearningPath() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl font-bold text-foreground mb-4 flex items-center justify-center gap-3">
-            <GraduationCap className="h-10 w-10 text-primary" />
-            AI Learning Path Generator
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Get a personalized roadmap based on your skills and career goals
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold text-foreground mb-4 flex items-center justify-center gap-3">
+                <GraduationCap className="h-10 w-10 text-primary" />
+                AI Learning Path Generator
+              </h1>
+              <p className="text-muted-foreground text-lg">
+                Get a personalized roadmap based on your skills and career goals
+              </p>
+            </div>
+            {savedPaths.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => setShowHistory(!showHistory)}
+              >
+                <History className="h-4 w-4 mr-2" />
+                History ({savedPaths.length})
+              </Button>
+            )}
+          </div>
         </motion.div>
 
+        {/* History Section */}
+        {showHistory && savedPaths.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Learning Path History</CardTitle>
+              <CardDescription>
+                View and restore previous learning paths
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {savedPaths.map((path) => (
+                  <Card
+                    key={path.id}
+                    className={`cursor-pointer hover:bg-accent transition-colors ${
+                      selectedHistoryPath === path.id ? 'border-primary' : ''
+                    }`}
+                    onClick={() => loadHistoryPath(path.id)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold">{path.path_title}</h3>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Created: {format(new Date(path.created_at), 'PPp')}
+                          </p>
+                          {path.estimated_duration && (
+                            <p className="text-sm text-muted-foreground">
+                              Duration: {path.estimated_duration}
+                            </p>
+                          )}
+                        </div>
+                        {selectedHistoryPath === path.id && (
+                          <Badge variant="default">Current</Badge>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Generation Section */}
-        {!learningPath && (
+        {!learningPath && !showHistory && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -285,7 +388,7 @@ export default function LearningPath() {
         )}
 
         {/* Learning Path Display */}
-        {learningPath && (
+        {learningPath && !showHistory && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -308,7 +411,14 @@ export default function LearningPath() {
                       </span>
                     </CardDescription>
                   </div>
-                  <Button onClick={() => setLearningPath(null)} variant="outline">
+                  <Button 
+                    onClick={() => {
+                      setLearningPath(null);
+                      setSelectedHistoryPath(null);
+                    }} 
+                    variant="outline"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
                     Generate New Path
                   </Button>
                 </div>

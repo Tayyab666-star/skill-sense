@@ -255,6 +255,53 @@ export type Database = {
           },
         ]
       }
+      learning_paths: {
+        Row: {
+          created_at: string
+          estimated_duration: string | null
+          goal_id: string | null
+          id: string
+          is_active: boolean
+          path_data: Json
+          path_title: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          estimated_duration?: string | null
+          goal_id?: string | null
+          id?: string
+          is_active?: boolean
+          path_data: Json
+          path_title: string
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          estimated_duration?: string | null
+          goal_id?: string | null
+          id?: string
+          is_active?: boolean
+          path_data?: Json
+          path_title?: string
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_paths_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "career_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       learning_resources: {
         Row: {
           completed_at: string | null
