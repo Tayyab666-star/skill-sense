@@ -255,6 +255,62 @@ class DatabaseService {
       return [];
     }
   }
+
+  // Endorse a skill
+  async endorseSkill(userSkillId: string, endorsedBy: string, endorsementText?: string) {
+    try {
+      const { data, error } = await supabase
+        .from("skill_endorsements")
+        .insert({
+          user_skill_id: userSkillId,
+          endorsed_by: endorsedBy,
+          endorsement_text: endorsementText,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error endorsing skill:', error);
+      throw error;
+    }
+  }
+
+  // Get endorsements for a skill
+  async getSkillEndorsements(userSkillId: string) {
+    try {
+      const { data, error } = await supabase
+        .from("skill_endorsements")
+        .select(`
+          *,
+          endorsed_by_profile:profiles!skill_endorsements_endorsed_by_fkey(full_name, avatar_url)
+        `)
+        .eq("user_skill_id", userSkillId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching endorsements:', error);
+      return [];
+    }
+  }
+
+  // Delete an endorsement
+  async deleteEndorsement(endorsementId: string) {
+    try {
+      const { error } = await supabase
+        .from("skill_endorsements")
+        .delete()
+        .eq("id", endorsementId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error deleting endorsement:', error);
+      throw error;
+    }
+  }
 }
 
 export const databaseService = new DatabaseService();
