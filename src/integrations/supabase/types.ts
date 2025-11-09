@@ -312,6 +312,38 @@ export type Database = {
         }
         Relationships: []
       }
+      skill_endorsements: {
+        Row: {
+          created_at: string
+          endorsed_by: string
+          endorsement_text: string | null
+          id: string
+          user_skill_id: string
+        }
+        Insert: {
+          created_at?: string
+          endorsed_by: string
+          endorsement_text?: string | null
+          id?: string
+          user_skill_id: string
+        }
+        Update: {
+          created_at?: string
+          endorsed_by?: string
+          endorsement_text?: string | null
+          id?: string
+          user_skill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_endorsements_user_skill_id_fkey"
+            columns: ["user_skill_id"]
+            isOneToOne: false
+            referencedRelation: "user_skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skill_framework: {
         Row: {
           category: Database["public"]["Enums"]["skill_category"]
@@ -405,6 +437,7 @@ export type Database = {
         Row: {
           confidence_score: number | null
           created_at: string | null
+          endorsement_count: number | null
           evidence: string[] | null
           id: string
           is_explicit: boolean | null
@@ -420,6 +453,7 @@ export type Database = {
         Insert: {
           confidence_score?: number | null
           created_at?: string | null
+          endorsement_count?: number | null
           evidence?: string[] | null
           id?: string
           is_explicit?: boolean | null
@@ -435,6 +469,7 @@ export type Database = {
         Update: {
           confidence_score?: number | null
           created_at?: string | null
+          endorsement_count?: number | null
           evidence?: string[] | null
           id?: string
           is_explicit?: boolean | null
