@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
-import { Brain, Briefcase, Target, TrendingUp, Search, Sparkles, Check, X, Star } from "lucide-react";
+import { Brain, Briefcase, Target, TrendingUp, Search, Sparkles, Check, X, Star, Upload, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +31,9 @@ const JobMatching = () => {
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [jobApplications, setJobApplications] = useState<Record<string, any>>({});
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [uploadingCV, setUploadingCV] = useState(false);
+  const [cvFileName, setCvFileName] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -320,6 +323,84 @@ const JobMatching = () => {
     }, 1500);
   };
 
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 20 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please upload a file smaller than 20MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload a PDF, DOCX, or TXT file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingCV(true);
+    setCvFileName(file.name);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const content = e.target?.result as string;
+        
+        toast({
+          title: "Processing CV...",
+          description: "Extracting skills from your CV. This may take a moment.",
+        });
+
+        const { data, error } = await supabase.functions.invoke('analyze-cv', {
+          body: { cvText: content }
+        });
+
+        if (error) {
+          console.error('Error analyzing CV:', error);
+          throw error;
+        }
+
+        if (data?.error) {
+          throw new Error(data.details || data.error);
+        }
+
+        toast({
+          title: "CV Analyzed Successfully!",
+          description: `Found ${data.skills?.length || 0} skills. You can now analyze job descriptions.`,
+        });
+
+        // Refresh skills
+        await checkUserSkills();
+        
+        // Clear the result if there was a previous one
+        setMatchResult(null);
+      };
+
+      reader.readAsText(file);
+    } catch (error) {
+      console.error('Failed to analyze CV:', error);
+      toast({
+        title: "CV Analysis Failed",
+        description: error instanceof Error ? error.message : "Failed to extract skills from CV.",
+        variant: "destructive",
+      });
+      setCvFileName("");
+    } finally {
+      setUploadingCV(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const analyzeJobMatch = async () => {
     if (!jobDescription.trim()) {
       toast({
@@ -487,19 +568,59 @@ const JobMatching = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 {hasSkills === false && (
-                  <div className="p-4 bg-muted rounded-lg border border-border mb-4">
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Try our demo mode to see how job matching works.
-                    </p>
-                    <Button
-                      onClick={runDemoAnalysis}
-                      variant="default"
-                      size="sm"
-                      className="w-full"
-                      disabled={analyzing}
-                    >
-                      Try Demo
-                    </Button>
+                  <div className="space-y-3 mb-4">
+                    <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
+                      <div className="flex items-start gap-3 mb-3">
+                        <Upload className="h-5 w-5 text-primary mt-0.5" />
+                        <div className="flex-1">
+                          <h4 className="font-medium text-sm mb-1">Upload Your CV</h4>
+                          <p className="text-xs text-muted-foreground mb-3">
+                            Upload your CV to extract skills and get personalized job matches
+                          </p>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".pdf,.docx,.txt"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                          />
+                          <Button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploadingCV}
+                            size="sm"
+                            className="w-full"
+                          >
+                            {uploadingCV ? (
+                              <>Processing...</>
+                            ) : (
+                              <>
+                                <FileText className="mr-2 h-4 w-4" />
+                                Choose CV File
+                              </>
+                            )}
+                          </Button>
+                          {cvFileName && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Last uploaded: {cvFileName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-muted rounded-lg border border-border">
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Or try demo mode to see how job matching works
+                      </p>
+                      <Button
+                        onClick={runDemoAnalysis}
+                        variant="secondary"
+                        size="sm"
+                        className="w-full"
+                        disabled={analyzing || uploadingCV}
+                      >
+                        Try Demo
+                      </Button>
+                    </div>
                   </div>
                 )}
                 {hasSkills === true && (
