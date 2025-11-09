@@ -1,8 +1,11 @@
 import Tesseract from 'tesseract.js';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Configure PDF.js worker with proper path
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString();
 
 export interface OCRResult {
   text: string;
@@ -52,23 +55,45 @@ class OCRService {
   async extractTextFromPDF(file: File): Promise<string> {
     console.log('📄 Starting PDF text extraction...');
     
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    
-    let fullText = '';
-    
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(' ');
-      fullText += pageText + '\n';
-      console.log(`📃 Extracted page ${i}/${pdf.numPages}`);
-    }
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({
+        data: arrayBuffer,
+        useWorkerFetch: false,
+        isEvalSupported: false,
+        useSystemFonts: true
+      });
+      
+      const pdf = await loadingTask.promise;
+      console.log(`📚 PDF loaded: ${pdf.numPages} pages`);
+      
+      let fullText = '';
+      
+      for (let i = 1; i <= pdf.numPages; i++) {
+        try {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items
+            .map((item: any) => item.str)
+            .join(' ');
+          fullText += pageText + '\n';
+          console.log(`📃 Extracted page ${i}/${pdf.numPages} (${pageText.length} chars)`);
+        } catch (pageError) {
+          console.warn(`⚠️ Error extracting page ${i}:`, pageError);
+          // Continue with other pages
+        }
+      }
 
-    console.log('✅ PDF extraction completed');
-    return fullText;
+      if (!fullText.trim()) {
+        throw new Error('No text could be extracted from the PDF. It might be an image-based PDF.');
+      }
+
+      console.log('✅ PDF extraction completed:', fullText.length, 'characters');
+      return fullText;
+    } catch (error) {
+      console.error('❌ PDF extraction error:', error);
+      throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   async processDocument(file: File): Promise<OCRResult> {
@@ -78,14 +103,21 @@ class OCRService {
     const fileType = file.type;
 
     try {
-      if (fileType === 'application/pdf') {
+      if (fileType === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        console.log('📄 Detected PDF file');
         text = await this.extractTextFromPDF(file);
-      } else if (fileType.startsWith('image/')) {
+      } else if (fileType.startsWith('image/') || /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(file.name)) {
+        console.log('🖼️ Detected image file');
         text = await this.extractTextFromImage(file);
       } else if (fileType.includes('text') || file.name.endsWith('.txt')) {
+        console.log('📝 Detected text file');
         text = await file.text();
       } else {
-        throw new Error('Unsupported file format. Please upload PDF, image, or text file.');
+        throw new Error(`Unsupported file format: ${file.name}. Please upload PDF, image, or text file.`);
+      }
+
+      if (!text || text.trim().length < 50) {
+        throw new Error('Unable to extract sufficient text from document. Please ensure the file contains readable text.');
       }
 
       // Validate if it's a CV
