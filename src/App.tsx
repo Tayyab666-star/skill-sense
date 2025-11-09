@@ -8,6 +8,8 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Upload from "./pages/Upload";
 import ConnectSources from "./pages/ConnectSources";
+import DataSources from "./pages/DataSources";
+import Goals from "./pages/Goals";
 import JobMatching from "./pages/JobMatching";
 import TeamAnalysis from "./pages/TeamAnalysis";
 import Settings from "./pages/Settings";
@@ -27,6 +29,8 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/connect" element={<ConnectSources />} />
+          <Route path="/sources" element={<DataSources />} />
+          <Route path="/goals" element={<Goals />} />
           <Route path="/jobs" element={<JobMatching />} />
           <Route path="/team" element={<TeamAnalysis />} />
           <Route path="/settings" element={<Settings />} />

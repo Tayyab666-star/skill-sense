@@ -165,8 +165,14 @@ const Upload = () => {
             <Button variant="outline" onClick={() => navigate("/connect")}>
               Connect Profiles
             </Button>
+            <Button variant="outline" onClick={() => navigate("/sources")}>
+              Add Sources
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/goals")}>
+              Goals
+            </Button>
             <Button variant="outline" onClick={() => navigate("/dashboard")}>
-              View Dashboard
+              Dashboard
             </Button>
           </div>
         </div>

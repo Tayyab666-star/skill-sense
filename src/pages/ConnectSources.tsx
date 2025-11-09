@@ -161,6 +161,12 @@ export default function ConnectSources() {
             <Button variant="outline" onClick={() => navigate("/upload")}>
               Upload CV
             </Button>
+            <Button variant="outline" onClick={() => navigate("/sources")}>
+              Add Sources
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/goals")}>
+              Goals
+            </Button>
             <Button variant="outline" onClick={() => navigate("/dashboard")}>
               Dashboard
             </Button>

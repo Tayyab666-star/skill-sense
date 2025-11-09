@@ -294,9 +294,9 @@ const Index = () => {
             className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center"
           >
             {[
-              { value: "3+", label: "Data Sources", icon: Target },
+              { value: "5+", label: "Data Sources", icon: Target },
               { value: "AI", label: "Powered Analysis", icon: Brain },
-              { value: "Fast", label: "Instant Results", icon: Zap }
+              { value: "Real-time", label: "Instant Insights", icon: Zap }
             ].map((stat, idx) => (
               <motion.div key={idx} variants={itemVariants}>
                 <stat.icon className="h-12 w-12 text-primary mx-auto mb-4" />
@@ -346,7 +346,7 @@ const Index = () => {
           </div>
           <p className="mb-2">Multi-Source Skill Analysis Powered by AI</p>
           <p className="text-sm">
-            CV Upload • GitHub Analysis • LinkedIn Import • Privacy-First
+            CV Upload • GitHub • LinkedIn • Blogs • Performance Reviews • Goals Tracking
           </p>
           <p className="text-xs mt-4">© 2025 SkillSense. All rights reserved.</p>
         </div>

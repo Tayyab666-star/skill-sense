@@ -131,10 +131,24 @@ const Dashboard = () => {
               SkillSense
             </span>
           </div>
-          <Button onClick={() => navigate("/upload")} className="bg-primary hover:bg-primary/90">
-            <Upload className="mr-2 h-4 w-4" />
-            Upload New CV
-          </Button>
+          <div className="flex gap-3 flex-wrap">
+            <Button variant="outline" onClick={() => navigate("/upload")}>
+              <Upload className="mr-2 h-4 w-4" />
+              Upload CV
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/connect")}>
+              Connect Profiles
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/sources")}>
+              Add Sources
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/goals")}>
+              Goals
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/jobs")}>
+              Job Match
+            </Button>
+          </div>
         </div>
       </nav>
 

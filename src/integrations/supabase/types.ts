@@ -65,6 +65,48 @@ export type Database = {
           },
         ]
       }
+      career_goals: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          progress: number | null
+          status: string | null
+          target_date: string | null
+          target_skills: string[] | null
+          timeline: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          progress?: number | null
+          status?: string | null
+          target_date?: string | null
+          target_skills?: string[] | null
+          timeline?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          progress?: number | null
+          status?: string | null
+          target_date?: string | null
+          target_skills?: string[] | null
+          timeline?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       data_sources: {
         Row: {
           created_at: string | null
@@ -209,6 +251,68 @@ export type Database = {
             columns: ["posted_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_resources: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          description: string | null
+          difficulty_level: string | null
+          duration: string | null
+          id: string
+          is_completed: boolean | null
+          notes: string | null
+          provider: string | null
+          resource_type: string
+          skill_id: string | null
+          title: string
+          updated_at: string | null
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          difficulty_level?: string | null
+          duration?: string | null
+          id?: string
+          is_completed?: boolean | null
+          notes?: string | null
+          provider?: string | null
+          resource_type: string
+          skill_id?: string | null
+          title: string
+          updated_at?: string | null
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          difficulty_level?: string | null
+          duration?: string | null
+          id?: string
+          is_completed?: boolean | null
+          notes?: string | null
+          provider?: string | null
+          resource_type?: string
+          skill_id?: string | null
+          title?: string
+          updated_at?: string | null
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_resources_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skill_framework"
             referencedColumns: ["id"]
           },
         ]
@@ -426,6 +530,54 @@ export type Database = {
           },
           {
             foreignKeyName: "skill_gaps_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skill_framework"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      skill_history: {
+        Row: {
+          confidence_score: number | null
+          data_source_id: string | null
+          id: string
+          notes: string | null
+          proficiency_level: string
+          recorded_at: string | null
+          skill_id: string
+          user_id: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          data_source_id?: string | null
+          id?: string
+          notes?: string | null
+          proficiency_level: string
+          recorded_at?: string | null
+          skill_id: string
+          user_id: string
+        }
+        Update: {
+          confidence_score?: number | null
+          data_source_id?: string | null
+          id?: string
+          notes?: string | null
+          proficiency_level?: string
+          recorded_at?: string | null
+          skill_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_history_data_source_id_fkey"
+            columns: ["data_source_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_history_skill_id_fkey"
             columns: ["skill_id"]
             isOneToOne: false
             referencedRelation: "skill_framework"
