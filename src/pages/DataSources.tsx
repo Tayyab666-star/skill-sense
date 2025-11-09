@@ -155,6 +155,12 @@ export default function DataSources() {
             <Button variant="outline" onClick={() => navigate("/connect")}>
               Connect Profiles
             </Button>
+            <Button variant="outline" onClick={() => navigate("/goals")}>
+              Goals
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/learning-path")}>
+              Learning Path
+            </Button>
             <Button variant="outline" onClick={() => navigate("/dashboard")}>
               Dashboard
             </Button>

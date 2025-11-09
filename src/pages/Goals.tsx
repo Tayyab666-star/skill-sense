@@ -212,6 +212,9 @@ export default function Goals() {
             </span>
           </div>
           <div className="flex gap-3">
+            <Button variant="outline" onClick={() => navigate("/learning-path")}>
+              Learning Path
+            </Button>
             <Button variant="outline" onClick={() => navigate("/dashboard")}>
               Dashboard
             </Button>
