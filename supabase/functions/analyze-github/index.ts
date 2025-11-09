@@ -86,7 +86,22 @@ serve(async (req) => {
       }
       const errorText = await profileResponse.text();
       console.error('❌ GitHub API error:', profileResponse.status, errorText);
-      throw new Error(`GitHub API error: ${profileResponse.status}`);
+      if (profileResponse.status === 403 && /rate limit/i.test(errorText)) {
+        return new Response(
+          JSON.stringify({ 
+            error: "GitHub rate limit exceeded",
+            details: "Authenticated requests have higher limits. Configure a GitHub token to continue."
+          }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(
+        JSON.stringify({ 
+          error: `GitHub API error: ${profileResponse.status}`,
+          details: "Failed to analyze GitHub profile. Please try again."
+        }),
+        { status: profileResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const profile = await profileResponse.json();
@@ -100,7 +115,24 @@ serve(async (req) => {
     );
 
     if (!reposResponse.ok) {
-      throw new Error(`Failed to fetch repositories: ${reposResponse.status}`);
+      const errorText = await reposResponse.text();
+      console.error('❌ GitHub repos error:', reposResponse.status, errorText);
+      if (reposResponse.status === 403 && /rate limit/i.test(errorText)) {
+        return new Response(
+          JSON.stringify({ 
+            error: "GitHub rate limit exceeded",
+            details: "Authenticated requests have higher limits. Configure a GitHub token to continue."
+          }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(
+        JSON.stringify({ 
+          error: `GitHub API error: ${reposResponse.status}`,
+          details: "Failed to fetch repositories."
+        }),
+        { status: reposResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const repos = await reposResponse.json();
