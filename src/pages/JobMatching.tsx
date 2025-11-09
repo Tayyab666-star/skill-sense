@@ -321,11 +321,19 @@ const JobMatching = () => {
   };
 
   const analyzeJobMatch = async () => {
-    if (!jobDescription.trim()) return;
+    if (!jobDescription.trim()) {
+      toast({
+        title: "Job Description Required",
+        description: "Please paste a job description to analyze.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (hasSkills === false) {
       toast({
-        title: "Skills Required",
-        description: "Upload your CV or connect sources first, or try Demo mode.",
+        title: "No Skills Found",
+        description: "Upload your CV first, or click 'Try Demo' to see how it works.",
         variant: "destructive",
       });
       return;
@@ -344,7 +352,7 @@ const JobMatching = () => {
         throw error;
       }
 
-      if (data.error) {
+      if (data?.error) {
         throw new Error(data.details || data.error);
       }
 
@@ -517,7 +525,7 @@ const JobMatching = () => {
                 />
                 <Button
                   onClick={analyzeJobMatch}
-                  disabled={!jobDescription.trim() || analyzing || hasSkills === false}
+                  disabled={analyzing}
                   className="w-full"
                 >
                   {analyzing ? (
