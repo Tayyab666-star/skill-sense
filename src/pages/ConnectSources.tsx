@@ -1,0 +1,307 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Brain, Github, Linkedin, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { motion } from "framer-motion";
+
+export default function ConnectSources() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [githubUsername, setGithubUsername] = useState("");
+  const [isAnalyzingGithub, setIsAnalyzingGithub] = useState(false);
+  const [isConnectingLinkedIn, setIsConnectingLinkedIn] = useState(false);
+  const [githubResult, setGithubResult] = useState<any>(null);
+
+  const handleGithubAnalysis = async () => {
+    if (!githubUsername.trim()) {
+      toast({
+        title: "Username Required",
+        description: "Please enter a GitHub username",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAnalyzingGithub(true);
+    setGithubResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-github', {
+        body: { githubUsername: githubUsername.trim() }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data || !data.skills) {
+        throw new Error('Invalid response from GitHub analysis');
+      }
+
+      setGithubResult(data);
+
+      toast({
+        title: "✅ GitHub Analysis Complete!",
+        description: `Found ${data.skills.length} skills from your GitHub profile`,
+      });
+
+      // Navigate to dashboard with results after a short delay
+      setTimeout(() => {
+        navigate("/dashboard", { state: { analysisResult: data, source: 'github' } });
+      }, 2000);
+
+    } catch (error: any) {
+      console.error('GitHub analysis error:', error);
+      toast({
+        title: "❌ Analysis Failed",
+        description: error.message || "Failed to analyze GitHub profile",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAnalyzingGithub(false);
+    }
+  };
+
+  const handleLinkedInConnect = async () => {
+    setIsConnectingLinkedIn(true);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'linkedin_oidc',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+          scopes: 'openid profile email'
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Connecting to LinkedIn",
+        description: "Redirecting to LinkedIn for authentication...",
+      });
+
+    } catch (error: any) {
+      console.error('LinkedIn OAuth error:', error);
+      toast({
+        title: "❌ Connection Failed",
+        description: error.message || "Failed to connect to LinkedIn",
+        variant: "destructive",
+      });
+      setIsConnectingLinkedIn(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-hero">
+      {/* Navigation */}
+      <nav className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50 shadow-sm">
+        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
+            <Brain className="h-8 w-8 text-primary" />
+            <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+              SkillSense
+            </span>
+          </div>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => navigate("/upload")}>
+              Upload CV
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/dashboard")}>
+              Dashboard
+            </Button>
+          </div>
+        </div>
+      </nav>
+
+      <div className="container mx-auto px-6 py-12 max-w-4xl">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-12"
+        >
+          <h1 className="text-4xl font-bold text-foreground mb-4">
+            Connect Your Professional Profiles
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Import skills from GitHub and LinkedIn to build a comprehensive skill profile
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* GitHub Card */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <Card className="border-2 h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Github className="h-6 w-6 text-foreground" />
+                  GitHub Analysis
+                </CardTitle>
+                <CardDescription>
+                  Extract skills from your repositories and contributions
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="github-username">GitHub Username</Label>
+                  <Input
+                    id="github-username"
+                    placeholder="octocat"
+                    value={githubUsername}
+                    onChange={(e) => setGithubUsername(e.target.value)}
+                    disabled={isAnalyzingGithub}
+                  />
+                </div>
+
+                <Button 
+                  onClick={handleGithubAnalysis}
+                  disabled={isAnalyzingGithub || !githubUsername.trim()}
+                  className="w-full"
+                >
+                  {isAnalyzingGithub ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Github className="mr-2 h-4 w-4" />
+                      Analyze GitHub Profile
+                    </>
+                  )}
+                </Button>
+
+                {githubResult && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="p-4 bg-success/10 border border-success rounded-lg"
+                  >
+                    <div className="flex items-center gap-2 text-success mb-2">
+                      <CheckCircle2 className="h-5 w-5" />
+                      <span className="font-semibold">Analysis Complete!</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Found {githubResult.skills?.length || 0} skills
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Redirecting to dashboard...
+                    </p>
+                  </motion.div>
+                )}
+
+                <div className="text-xs text-muted-foreground mt-4">
+                  <p>✓ Analyzes programming languages</p>
+                  <p>✓ Extracts frameworks & tools</p>
+                  <p>✓ Evaluates contribution patterns</p>
+                  <p>✓ Identifies expertise areas</p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* LinkedIn Card */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+          >
+            <Card className="border-2 h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Linkedin className="h-6 w-6 text-[#0077B5]" />
+                  LinkedIn Integration
+                </CardTitle>
+                <CardDescription>
+                  Connect your LinkedIn profile for professional insights
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Connect your LinkedIn account to import your professional profile data.
+                  </p>
+                  <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span>
+                      LinkedIn's OAuth provides limited data. For comprehensive analysis, 
+                      we recommend uploading your CV as well.
+                    </span>
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={handleLinkedInConnect}
+                  disabled={isConnectingLinkedIn}
+                  className="w-full bg-[#0077B5] hover:bg-[#006399]"
+                >
+                  {isConnectingLinkedIn ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <Linkedin className="mr-2 h-4 w-4" />
+                      Connect LinkedIn
+                    </>
+                  )}
+                </Button>
+
+                <div className="text-xs text-muted-foreground mt-4">
+                  <p>✓ Imports basic profile information</p>
+                  <p>✓ Professional identity verification</p>
+                  <p>✓ Secure OAuth authentication</p>
+                  <p>✓ No password sharing required</p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+
+        {/* Info Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+          className="mt-12"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle>Multi-Source Skill Aggregation</CardTitle>
+              <CardDescription>
+                SkillSense combines data from multiple sources to create a comprehensive skill profile
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <p>
+                📄 <strong>CV Analysis:</strong> Upload your resume for detailed skill extraction and career insights
+              </p>
+              <p>
+                💻 <strong>GitHub:</strong> Analyzes your code repositories, languages, and open-source contributions
+              </p>
+              <p>
+                👔 <strong>LinkedIn:</strong> Imports professional profile data and career trajectory
+              </p>
+              <p className="pt-3 text-xs">
+                All data is processed securely and stored in your private profile. You control what information is shared.
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    </div>
+  );
+}

@@ -161,9 +161,14 @@ const Upload = () => {
               SkillSense
             </span>
           </div>
-          <Button variant="outline" onClick={() => navigate("/dashboard")}>
-            View Dashboard
-          </Button>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => navigate("/connect")}>
+              Connect Profiles
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/dashboard")}>
+              View Dashboard
+            </Button>
+          </div>
         </div>
       </nav>
 

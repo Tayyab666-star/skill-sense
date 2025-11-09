@@ -15,20 +15,20 @@ const Index = () => {
     },
     {
       icon: FileSearch,
-      title: "OCR Technology",
-      description: "Extract text from PDFs, images, and scanned documents automatically",
+      title: "Multi-Source Aggregation",
+      description: "Connect GitHub, LinkedIn, and upload CVs to build a comprehensive skill profile",
       color: "text-success"
     },
     {
       icon: CheckCircle,
-      title: "CV Validation",
-      description: "Intelligent validation ensures only proper CVs are analyzed",
+      title: "Smart Validation",
+      description: "Intelligent validation ensures high-quality skill analysis from all sources",
       color: "text-accent"
     },
     {
       icon: BarChart3,
-      title: "Detailed Insights",
-      description: "Get comprehensive career insights and personalized recommendations",
+      title: "Career Insights",
+      description: "Get personalized recommendations and identify skill gaps for career growth",
       color: "text-purple-500"
     }
   ];
@@ -116,7 +116,8 @@ const Index = () => {
             variants={itemVariants}
             className="text-xl text-muted-foreground max-w-2xl mx-auto"
           >
-            AI-powered CV analysis with OCR technology. Upload any document format and let our intelligent agent discover your complete skill profile in seconds.
+            AI-powered skill analysis from multiple sources. Upload CVs, connect GitHub repositories, 
+            import LinkedIn profiles - our intelligent system aggregates everything to discover your complete skill profile.
           </motion.p>
           
           <motion.div
@@ -147,11 +148,11 @@ const Index = () => {
             className="flex flex-wrap gap-3 justify-center pt-8"
           >
             {[
-              'OCR Enabled',
+              'GitHub Analysis',
+              'LinkedIn Import',
+              'CV Upload',
               'AI Validation',
-              'No API Keys',
-              'Instant Results',
-              'Privacy First'
+              'Instant Results'
             ].map((tech, idx) => (
               <div
                 key={idx}
@@ -233,26 +234,26 @@ const Index = () => {
             {[
               {
                 step: "01",
-                title: "Upload Any Format",
-                description: "Drop your CV in PDF, image, or text format. Our OCR handles everything automatically.",
+                title: "Connect Your Sources",
+                description: "Upload CV, connect GitHub for code analysis, or import LinkedIn profile.",
                 icon: Upload
               },
               {
                 step: "02",
-                title: "AI Validation",
-                description: "Smart detection verifies your document is a valid CV before processing.",
-                icon: CheckCircle
-              },
-              {
-                step: "03",
-                title: "Skill Extraction",
-                description: "Advanced AI identifies explicit and implicit skills with confidence scores.",
+                title: "AI Analysis",
+                description: "Advanced AI processes all sources to extract explicit and implicit skills.",
                 icon: Brain
               },
               {
+                step: "03",
+                title: "Skill Aggregation",
+                description: "Multi-source data combines into a comprehensive skill profile with evidence.",
+                icon: Target
+              },
+              {
                 step: "04",
-                title: "Get Insights",
-                description: "Receive detailed analysis with career recommendations and growth paths.",
+                title: "Career Insights",
+                description: "Get personalized recommendations, identify gaps, and plan your growth path.",
                 icon: TrendingUp
               }
             ].map((item, index) => (
@@ -293,9 +294,9 @@ const Index = () => {
             className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center"
           >
             {[
-              { value: "100%", label: "In-Browser Processing", icon: Zap },
-              { value: "OCR", label: "Document Recognition", icon: FileSearch },
-              { value: "AI", label: "Powered Analysis", icon: Brain }
+              { value: "3+", label: "Data Sources", icon: Target },
+              { value: "AI", label: "Powered Analysis", icon: Brain },
+              { value: "Fast", label: "Instant Results", icon: Zap }
             ].map((stat, idx) => (
               <motion.div key={idx} variants={itemVariants}>
                 <stat.icon className="h-12 w-12 text-primary mx-auto mb-4" />
@@ -323,7 +324,7 @@ const Index = () => {
             Ready to Discover Your Full Potential?
           </h2>
           <p className="text-xl mb-8 text-white/90 max-w-2xl mx-auto">
-            No sign-up required. No API keys needed. Just upload your CV and let our AI do the rest.
+            Connect GitHub, LinkedIn, and upload CVs. Get comprehensive skill analysis from all your professional sources in minutes.
           </p>
           <Button 
             size="lg"
@@ -343,9 +344,9 @@ const Index = () => {
             <Brain className="h-6 w-6 text-primary" />
             <span className="text-xl font-bold text-foreground">SkillSense</span>
           </div>
-          <p className="mb-2">Unlock Your Hidden Potential with AI</p>
+          <p className="mb-2">Multi-Source Skill Analysis Powered by AI</p>
           <p className="text-sm">
-            100% Privacy-First • No External APIs • Powered by In-Browser AI
+            CV Upload • GitHub Analysis • LinkedIn Import • Privacy-First
           </p>
           <p className="text-xs mt-4">© 2025 SkillSense. All rights reserved.</p>
         </div>

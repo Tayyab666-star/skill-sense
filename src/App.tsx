@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Upload from "./pages/Upload";
+import ConnectSources from "./pages/ConnectSources";
 import JobMatching from "./pages/JobMatching";
 import TeamAnalysis from "./pages/TeamAnalysis";
 import Settings from "./pages/Settings";
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/upload" element={<Upload />} />
+          <Route path="/connect" element={<ConnectSources />} />
           <Route path="/jobs" element={<JobMatching />} />
           <Route path="/team" element={<TeamAnalysis />} />
           <Route path="/settings" element={<Settings />} />
