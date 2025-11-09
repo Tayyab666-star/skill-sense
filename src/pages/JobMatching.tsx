@@ -19,6 +19,7 @@ const JobMatching = () => {
   const [jobs, setJobs] = useState<any[]>([]);
   const [hasSkills, setHasSkills] = useState<boolean | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [userSkills, setUserSkills] = useState<any[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -49,11 +50,21 @@ const JobMatching = () => {
     console.log('🔍 Checking user skills...');
     const { data, error } = await supabase
       .from("user_skills")
-      .select("id")
-      .limit(1);
+      .select(`
+        *,
+        skill_framework (
+          name,
+          category
+        )
+      `)
+      .order('confidence_score', { ascending: false })
+      .limit(10);
 
     console.log('✅ Skills check result:', { hasData: data && data.length > 0, count: data?.length });
     setHasSkills(data && data.length > 0);
+    if (data && data.length > 0) {
+      setUserSkills(data);
+    }
   };
 
   const loadJobs = async () => {
@@ -184,6 +195,50 @@ const JobMatching = () => {
             Find roles that match your skill profile
           </p>
         </motion.div>
+
+        {/* User Skills Overview */}
+        {hasSkills === true && userSkills.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-primary" />
+                  Your Top Skills
+                </CardTitle>
+                <CardDescription>
+                  Based on your CV analysis
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {userSkills.map((skill) => (
+                    <Badge 
+                      key={skill.id} 
+                      variant="default"
+                      className="text-sm py-1.5 px-3"
+                    >
+                      {skill.skill_framework?.name || 'Unknown Skill'}
+                      {skill.proficiency_level && (
+                        <span className="ml-2 opacity-70 text-xs">
+                          {skill.proficiency_level}
+                        </span>
+                      )}
+                    </Badge>
+                  ))}
+                </div>
+                {userSkills.length >= 10 && (
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Showing top 10 skills. View all in your Dashboard.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Analyze Job Description */}
