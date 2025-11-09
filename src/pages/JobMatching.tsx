@@ -46,20 +46,34 @@ const JobMatching = () => {
     if (!jobDescription.trim()) return;
 
     setAnalyzing(true);
-    // Simulate analysis
-    setTimeout(() => {
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-job-match', {
+        body: { jobDescription }
+      });
+
+      if (error) {
+        console.error('Error analyzing job match:', error);
+        throw error;
+      }
+
+      if (data.error) {
+        throw new Error(data.details || data.error);
+      }
+
+      setMatchResult(data);
+    } catch (error) {
+      console.error('Failed to analyze job match:', error);
       setMatchResult({
-        matchScore: 85,
-        matchingSkills: ["React", "TypeScript", "Problem Solving"],
-        missingSkills: ["Docker", "AWS"],
+        matchScore: 0,
+        matchingSkills: [],
+        missingSkills: [],
         recommendations: [
-          "Your technical skills align well with this role",
-          "Consider gaining experience with Docker and AWS",
-          "Your soft skills make you a strong candidate"
+          error instanceof Error ? error.message : "Failed to analyze job match. Please ensure you have uploaded your CV or connected data sources first."
         ]
       });
+    } finally {
       setAnalyzing(false);
-    }, 2000);
+    }
   };
 
   if (authLoading) {
@@ -211,7 +225,10 @@ const JobMatching = () => {
                       <p className="text-sm text-muted-foreground">{job.company}</p>
                       <div className="mt-3">
                         <div className="text-xs text-muted-foreground mb-1">Match Score</div>
-                        <Progress value={Math.floor(Math.random() * 30) + 70} className="h-2" />
+                        <div className="flex items-center gap-2">
+                          <Progress value={job.match_score || 0} className="h-2 flex-1" />
+                          <span className="text-sm font-medium">{job.match_score || 0}%</span>
+                        </div>
                       </div>
                       <Button variant="outline" size="sm" className="mt-3 w-full">
                         View Details

@@ -156,29 +156,7 @@ Identify:
 4. Domains of expertise
 5. Collaboration and contribution patterns
 
-Return ONLY a valid JSON object with this structure:
-{
-  "skills": [
-    {
-      "name": "skill name",
-      "category": "Technical|Soft|Domain|Language",
-      "confidence": 85,
-      "isExplicit": true,
-      "evidence": ["context from GitHub"],
-      "proficiencyLevel": "Expert|Advanced|Intermediate|Beginner"
-    }
-  ],
-  "insights": [
-    {
-      "title": "insight title",
-      "description": "detailed description",
-      "priority": "high|medium|low",
-      "category": "strength|gap|recommendation"
-    }
-  ],
-  "summary": "overall analysis summary",
-  "overallScore": 85
-}`;
+Use the analyze_github function to return structured results.`;
 
     const userPrompt = `Analyze this GitHub profile and extract all technical skills:
 
@@ -198,8 +176,52 @@ Focus on programming languages, frameworks, tools, and practices evident from th
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        temperature: 0.7,
-        max_tokens: 3000,
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "analyze_github",
+              description: "Extract skills and insights from GitHub profile",
+              parameters: {
+                type: "object",
+                properties: {
+                  skills: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string" },
+                        category: { type: "string", enum: ["Technical", "Soft", "Domain", "Language"] },
+                        confidence: { type: "number", minimum: 0, maximum: 100 },
+                        isExplicit: { type: "boolean" },
+                        evidence: { type: "array", items: { type: "string" } },
+                        proficiencyLevel: { type: "string", enum: ["Expert", "Advanced", "Intermediate", "Beginner"] }
+                      },
+                      required: ["name", "category", "confidence", "proficiencyLevel"]
+                    }
+                  },
+                  insights: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        description: { type: "string" },
+                        priority: { type: "string", enum: ["high", "medium", "low"] },
+                        category: { type: "string", enum: ["strength", "gap", "recommendation"] }
+                      },
+                      required: ["title", "description", "priority", "category"]
+                    }
+                  },
+                  summary: { type: "string" },
+                  overallScore: { type: "number", minimum: 0, maximum: 100 }
+                },
+                required: ["skills", "insights", "summary", "overallScore"]
+              }
+            }
+          }
+        ],
+        tool_choice: { type: "function", function: { name: "analyze_github" } }
       }),
     });
 
@@ -220,21 +242,14 @@ Focus on programming languages, frameworks, tools, and practices evident from th
     }
 
     const aiData = await aiResponse.json();
-    const content = aiData.choices?.[0]?.message?.content;
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
 
-    if (!content) {
-      throw new Error("No response from AI");
+    if (!toolCall || toolCall.function.name !== "analyze_github") {
+      console.error('Unexpected AI response format:', JSON.stringify(aiData, null, 2));
+      throw new Error("AI did not return expected tool call");
     }
 
-    let analysis;
-    try {
-      const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/) || content.match(/(\{[\s\S]*\})/);
-      const jsonStr = jsonMatch ? jsonMatch[1] : content;
-      analysis = JSON.parse(jsonStr.trim());
-    } catch (parseError) {
-      console.error("Failed to parse AI response:", content);
-      throw new Error("Failed to parse AI analysis result");
-    }
+    const analysis = JSON.parse(toolCall.function.arguments);
 
     // Store data source
     const { error: dataSourceError } = await supabase
