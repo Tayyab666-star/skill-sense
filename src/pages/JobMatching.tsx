@@ -17,6 +17,7 @@ const JobMatching = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [matchResult, setMatchResult] = useState<any>(null);
   const [jobs, setJobs] = useState<any[]>([]);
+  const [hasSkills, setHasSkills] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -27,8 +28,18 @@ const JobMatching = () => {
   useEffect(() => {
     if (user) {
       loadJobs();
+      checkUserSkills();
     }
   }, [user]);
+
+  const checkUserSkills = async () => {
+    const { data, error } = await supabase
+      .from("user_skills")
+      .select("id")
+      .limit(1);
+
+    setHasSkills(data && data.length > 0);
+  };
 
   const loadJobs = async () => {
     const { data, error } = await supabase
@@ -134,15 +145,31 @@ const JobMatching = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {hasSkills === false && (
+                  <div className="p-4 bg-muted rounded-lg border border-border mb-4">
+                    <p className="text-sm text-muted-foreground mb-3">
+                      You need to upload your CV or connect data sources first to analyze job matches.
+                    </p>
+                    <Button
+                      onClick={() => navigate("/upload")}
+                      variant="default"
+                      size="sm"
+                      className="w-full"
+                    >
+                      Upload CV
+                    </Button>
+                  </div>
+                )}
                 <Textarea
                   placeholder="Paste job description here..."
                   value={jobDescription}
                   onChange={(e) => setJobDescription(e.target.value)}
                   className="min-h-[200px]"
+                  disabled={hasSkills === false}
                 />
                 <Button
                   onClick={analyzeJobMatch}
-                  disabled={!jobDescription.trim() || analyzing}
+                  disabled={!jobDescription.trim() || analyzing || hasSkills === false}
                   className="w-full"
                 >
                   {analyzing ? (
