@@ -20,6 +20,8 @@ const JobMatching = () => {
   const [hasSkills, setHasSkills] = useState<boolean | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [userSkills, setUserSkills] = useState<any[]>([]);
+  const [matchedJobs, setMatchedJobs] = useState<any[]>([]);
+  const [loadingMatches, setLoadingMatches] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -33,6 +35,13 @@ const JobMatching = () => {
       checkUserSkills();
     }
   }, [user]);
+
+  // Auto-match jobs when skills are loaded
+  useEffect(() => {
+    if (userSkills.length > 0 && jobs.length > 0) {
+      calculateJobMatches();
+    }
+  }, [userSkills, jobs]);
 
   // Recheck skills when page becomes visible
   useEffect(() => {
@@ -65,6 +74,61 @@ const JobMatching = () => {
     if (data && data.length > 0) {
       setUserSkills(data);
     }
+  };
+
+  const calculateJobMatches = () => {
+    setLoadingMatches(true);
+    console.log('🎯 Calculating job matches...');
+    
+    const userSkillNames = userSkills
+      .map(s => s.skill_framework?.name?.toLowerCase())
+      .filter(Boolean);
+
+    const jobsWithScores = jobs.map(job => {
+      const requiredSkills = (job.required_skills || []).map((s: string) => s.toLowerCase());
+      const preferredSkills = (job.preferred_skills || []).map((s: string) => s.toLowerCase());
+      
+      const matchingRequired = requiredSkills.filter((s: string) => 
+        userSkillNames.some(userSkill => userSkill.includes(s) || s.includes(userSkill))
+      );
+      
+      const matchingPreferred = preferredSkills.filter((s: string) => 
+        userSkillNames.some(userSkill => userSkill.includes(s) || s.includes(userSkill))
+      );
+
+      const missingRequired = requiredSkills.filter((s: string) => 
+        !matchingRequired.includes(s)
+      );
+
+      // Calculate match score
+      const requiredWeight = 0.7;
+      const preferredWeight = 0.3;
+      
+      const requiredScore = requiredSkills.length > 0 
+        ? (matchingRequired.length / requiredSkills.length) * 100 
+        : 100;
+      
+      const preferredScore = preferredSkills.length > 0 
+        ? (matchingPreferred.length / preferredSkills.length) * 100 
+        : 100;
+
+      const matchScore = Math.round(
+        (requiredScore * requiredWeight) + (preferredScore * preferredWeight)
+      );
+
+      return {
+        ...job,
+        matchScore,
+        matchingSkills: [...matchingRequired, ...matchingPreferred],
+        missingSkills: missingRequired
+      };
+    });
+
+    const sortedJobs = jobsWithScores.sort((a, b) => b.matchScore - a.matchScore);
+    setMatchedJobs(sortedJobs);
+    setLoadingMatches(false);
+    
+    console.log('✅ Job matches calculated:', sortedJobs.length);
   };
 
   const loadJobs = async () => {
@@ -361,7 +425,7 @@ const JobMatching = () => {
             </Card>
           </motion.div>
 
-          {/* Available Jobs */}
+          {/* Available Jobs - Now with Auto-Matching */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -371,25 +435,86 @@ const JobMatching = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Briefcase className="h-5 w-5 text-primary" />
-                  Recommended Jobs
+                  {hasSkills ? "Auto-Matched Jobs" : "Available Jobs"}
                 </CardTitle>
                 <CardDescription>
-                  Opportunities matching your skills
+                  {hasSkills 
+                    ? "Jobs ranked by how well they match your skills"
+                    : "Sign in and upload your CV for personalized matches"}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {jobs.length > 0 ? (
+                {loadingMatches ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Analyzing job matches...</p>
+                  </div>
+                ) : hasSkills && matchedJobs.length > 0 ? (
+                  matchedJobs.map((job, idx) => (
+                    <div key={idx} className="p-4 border border-border rounded-lg hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h4 className="font-semibold">{job.title}</h4>
+                          <p className="text-sm text-muted-foreground">{job.company}</p>
+                          {job.location && (
+                            <p className="text-xs text-muted-foreground mt-1">{job.location}</p>
+                          )}
+                        </div>
+                        <Badge 
+                          variant={job.matchScore >= 70 ? "default" : job.matchScore >= 50 ? "secondary" : "outline"}
+                          className="text-lg font-bold px-3 py-1"
+                        >
+                          {job.matchScore}%
+                        </Badge>
+                      </div>
+
+                      <div className="mt-3 space-y-2">
+                        {job.matchingSkills && job.matchingSkills.length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Matching Skills</p>
+                            <div className="flex flex-wrap gap-1">
+                              {job.matchingSkills.slice(0, 5).map((skill: string, i: number) => (
+                                <Badge key={i} variant="default" className="text-xs">{skill}</Badge>
+                              ))}
+                              {job.matchingSkills.length > 5 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{job.matchingSkills.length - 5} more
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {job.missingSkills && job.missingSkills.length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Skills to Develop</p>
+                            <div className="flex flex-wrap gap-1">
+                              {job.missingSkills.slice(0, 3).map((skill: string, i: number) => (
+                                <Badge key={i} variant="outline" className="text-xs">{skill}</Badge>
+                              ))}
+                              {job.missingSkills.length > 3 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{job.missingSkills.length - 3} more
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <Button variant="outline" size="sm" className="mt-3 w-full">
+                        View Details
+                      </Button>
+                    </div>
+                  ))
+                ) : jobs.length > 0 ? (
                   jobs.map((job, idx) => (
                     <div key={idx} className="p-4 border border-border rounded-lg hover:shadow-md transition-shadow">
                       <h4 className="font-semibold">{job.title}</h4>
                       <p className="text-sm text-muted-foreground">{job.company}</p>
-                      <div className="mt-3">
-                        <div className="text-xs text-muted-foreground mb-1">Match Score</div>
-                        <div className="flex items-center gap-2">
-                          <Progress value={job.match_score || 0} className="h-2 flex-1" />
-                          <span className="text-sm font-medium">{job.match_score || 0}%</span>
-                        </div>
-                      </div>
+                      {job.location && (
+                        <p className="text-xs text-muted-foreground mt-1">{job.location}</p>
+                      )}
                       <Button variant="outline" size="sm" className="mt-3 w-full">
                         View Details
                       </Button>
