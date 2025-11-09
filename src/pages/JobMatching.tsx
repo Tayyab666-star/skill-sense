@@ -639,43 +639,80 @@ const JobMatching = () => {
                   </div>
                 )}
                 {hasSkills === true && (
-                  <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20 mb-4">
-                    <div className="flex items-center gap-2">
-                      <Target className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">CV uploaded - Ready for analysis</span>
+                  <div className="space-y-4 mb-4">
+                    <div className="flex items-center justify-between p-4 bg-gradient-primary text-white rounded-lg shadow-md">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center">
+                          <Check className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="font-semibold">CV Analyzed Successfully!</div>
+                          <div className="text-sm opacity-90">
+                            {userSkills.length} skills extracted - Ready to analyze jobs
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={checkUserSkills}
+                        variant="ghost"
+                        size="sm"
+                        className="text-white hover:bg-white/20"
+                      >
+                        Refresh
+                      </Button>
                     </div>
-                    <Button
-                      onClick={checkUserSkills}
-                      variant="ghost"
-                      size="sm"
-                    >
-                      Refresh
-                    </Button>
+                    
+                    <div className="p-4 bg-accent/50 rounded-lg border-2 border-primary/30">
+                      <div className="flex items-start gap-2 mb-2">
+                        <Sparkles className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <div>
+                          <h4 className="font-semibold text-sm mb-1">Ready to Analyze!</h4>
+                          <p className="text-xs text-muted-foreground">
+                            Paste any job description below and click "Analyze Match" to see how well you match with the role, what skills you have, and what to learn next.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
                 <Textarea
-                  placeholder="Paste job description here..."
+                  placeholder="Paste the full job description here (requirements, responsibilities, qualifications, etc.)..."
                   value={jobDescription}
                   onChange={(e) => setJobDescription(e.target.value)}
-                  className="min-h-[200px]"
+                  className="min-h-[200px] text-sm"
                 />
+                
+                {jobDescription.trim() && (
+                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                    <FileText className="h-3 w-3" />
+                    {jobDescription.length} characters
+                  </div>
+                )}
+                
                 <Button
                   onClick={analyzeJobMatch}
-                  disabled={analyzing || uploadingCV}
-                  className="w-full"
+                  disabled={analyzing || uploadingCV || !jobDescription.trim()}
+                  className="w-full h-12 text-base font-semibold"
+                  size="lg"
                 >
                   {analyzing ? (
                     <>
                       <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
-                      Analyzing...
+                      Analyzing Your Match...
                     </>
                   ) : (
                     <>
-                      <Sparkles className="mr-2 h-4 w-4" />
+                      <Sparkles className="mr-2 h-5 w-5" />
                       Analyze Match
                     </>
                   )}
                 </Button>
+                
+                {!jobDescription.trim() && hasSkills === true && (
+                  <p className="text-xs text-center text-muted-foreground">
+                    👆 Paste a job description above to get your personalized match analysis
+                  </p>
+                )}
 
                 {matchResult && (
                   <motion.div
