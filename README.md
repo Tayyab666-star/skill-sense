@@ -12,37 +12,43 @@ SkillSense is a comprehensive platform that aggregates professional skills from 
 ## 🌟 Features
 
 ### Multi-Source Data Aggregation
+
 - **CV/Resume Upload** - Extract skills, experience, and qualifications from PDF documents
 - **GitHub Integration** - Analyze repositories for programming languages, frameworks, and technical expertise
-- **LinkedIn Import** - Import professional identity and career trajectory (OAuth integration)
+-
 - **Blog Analysis** - Extract expertise from blog posts and articles via URL
 - **Performance Review Processing** - Identify soft skills and growth areas from feedback text
 
 ### Intelligent Skill Management
+
 - **Comprehensive Skill Framework** - Categorized by Technical, Soft Skills, Domain Knowledge, and Languages
 - **Proficiency Tracking** - Multi-level proficiency system (Beginner to Expert)
 - **Skill Endorsements** - Validation from multiple sources with confidence scoring
 - **Historical Tracking** - Time-series tracking of skill development over time
 
 ### Career Development Tools
+
 - **Career Goals Management** - Set and track career objectives with skill gap analysis
 - **Learning Path Generation** - AI-powered personalized learning recommendations
 - **Job Matching** - Intelligent job matching based on skill profile and career goals
 - **Progress Tracking** - Visual progress indicators and milestone tracking
 
 ### AI-Powered Analysis
+
 - **Skill Extraction** - Automatic skill identification from various data sources
 - **Career Insights** - Personalized recommendations for career growth
 - **Gap Analysis** - Identify skill gaps between current state and career goals
 - **Trend Analysis** - Industry skill trends and demand forecasting
 
 ### Team & Organization Features
+
 - **Team Skill Matrix** - Organization-wide skill visibility
 - **Skill Gap Identification** - Team-level capability analysis
 - **Resource Allocation** - Optimal team composition recommendations
 - **Succession Planning** - Identify skill overlaps and single points of failure
 
 ### Dashboard & Visualization
+
 - **Interactive Dashboard** - Comprehensive skill profile overview
 - **Skill Distribution Charts** - Visual representation of skill categories
 - **Progress Metrics** - Track improvement over time
@@ -51,6 +57,7 @@ SkillSense is a comprehensive platform that aggregates professional skills from 
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **React 18.3.1** - Modern UI library with hooks
 - **TypeScript** - Type-safe development
 - **Vite** - Lightning-fast build tool and dev server
@@ -61,6 +68,7 @@ SkillSense is a comprehensive platform that aggregates professional skills from 
 - **TanStack Query** - Server state management
 
 ### Backend & Infrastructure
+
 - **Supabase** - Backend-as-a-Service platform
   - PostgreSQL database
   - Row Level Security (RLS) policies
@@ -70,6 +78,7 @@ SkillSense is a comprehensive platform that aggregates professional skills from 
   - File storage
 
 ### AI & Machine Learning
+
 - **Google Gemini AI** - Advanced language models for skill extraction and analysis
   - gemini-2.5-pro - Complex reasoning and multimodal analysis
   - gemini-2.5-flash - Balanced performance
@@ -77,6 +86,7 @@ SkillSense is a comprehensive platform that aggregates professional skills from 
 - **PDF.js** - PDF parsing and text extraction
 
 ### Additional Libraries
+
 - **React Hook Form** - Form state management
 - **Zod** - Schema validation
 - **date-fns** - Date manipulation
@@ -86,36 +96,40 @@ SkillSense is a comprehensive platform that aggregates professional skills from 
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Node.js 18+ and npm installed ([install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
 - Supabase account (automatically provisioned with Lovable Cloud)
 
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone <YOUR_GIT_URL>
    cd skillsense
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Environment Setup**
-   
+
    Environment variables are automatically configured via Lovable Cloud:
    - `VITE_SUPABASE_URL` - Supabase project URL
    - `VITE_SUPABASE_PUBLISHABLE_KEY` - Supabase anon key
    - `VITE_SUPABASE_PROJECT_ID` - Supabase project ID
 
 4. **Start development server**
+
    ```bash
    npm run dev
    ```
 
 5. **Open your browser**
-   
+
    Navigate to `http://localhost:5173`
 
 ## 📖 Usage Guide
@@ -211,11 +225,13 @@ VITE_SUPABASE_PROJECT_ID=your_project_id
 ```
 
 Optional secrets for enhanced features:
+
 - `GITHUB_TOKEN` - For higher GitHub API rate limits (5000/hour vs 60/hour)
 
 ## 📊 Database Schema
 
 Core tables:
+
 - `data_sources` - Stores raw data from various sources
 - `user_skills` - Extracted and validated skills
 - `skill_framework` - Master skill taxonomy
@@ -245,6 +261,7 @@ Copyright © 2025 SkillSense. All rights reserved.
 ## 💡 Support
 
 For issues or questions:
+
 1. Check [QUICKSTART.md](./QUICKSTART.md) troubleshooting section
 2. Review [FEATURES.md](./FEATURES.md) for feature details
 3. Contact support via Lovable platform
