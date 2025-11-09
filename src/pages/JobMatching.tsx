@@ -18,6 +18,7 @@ const JobMatching = () => {
   const [matchResult, setMatchResult] = useState<any>(null);
   const [jobs, setJobs] = useState<any[]>([]);
   const [hasSkills, setHasSkills] = useState<boolean | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -53,10 +54,53 @@ const JobMatching = () => {
     }
   };
 
+  const runDemoAnalysis = () => {
+    setAnalyzing(true);
+    setIsDemoMode(true);
+    
+    // Simulate API call delay
+    setTimeout(() => {
+      setMatchResult({
+        matchScore: 78,
+        matchingSkills: [
+          "JavaScript",
+          "React",
+          "TypeScript",
+          "Node.js",
+          "REST APIs",
+          "Git",
+          "Agile Development",
+          "Problem Solving"
+        ],
+        missingSkills: [
+          "GraphQL",
+          "Docker",
+          "Kubernetes",
+          "AWS Services"
+        ],
+        recommendations: [
+          "Strong foundation in core technologies - your JavaScript and React skills align well with this role",
+          "Consider learning GraphQL to enhance your API development capabilities",
+          "Docker and Kubernetes knowledge would strengthen your DevOps skills for this position",
+          "AWS certification would be valuable for cloud infrastructure requirements",
+          "Your Agile experience is a great asset for the team collaboration aspects"
+        ],
+        jobRequirements: {
+          technical: ["JavaScript", "React", "TypeScript", "GraphQL", "Docker", "AWS"],
+          soft: ["Team collaboration", "Problem solving", "Communication"],
+          experience: "3-5 years"
+        }
+      });
+      setAnalyzing(false);
+    }, 1500);
+  };
+
   const analyzeJobMatch = async () => {
     if (!jobDescription.trim()) return;
 
     setAnalyzing(true);
+    setIsDemoMode(false);
+    
     try {
       const { data, error } = await supabase.functions.invoke('analyze-job-match', {
         body: { jobDescription }
@@ -148,16 +192,27 @@ const JobMatching = () => {
                 {hasSkills === false && (
                   <div className="p-4 bg-muted rounded-lg border border-border mb-4">
                     <p className="text-sm text-muted-foreground mb-3">
-                      You need to upload your CV or connect data sources first to analyze job matches.
+                      Upload your CV for personalized analysis, or try our demo mode to see how it works.
                     </p>
-                    <Button
-                      onClick={() => navigate("/upload")}
-                      variant="default"
-                      size="sm"
-                      className="w-full"
-                    >
-                      Upload CV
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => navigate("/upload")}
+                        variant="default"
+                        size="sm"
+                        className="flex-1"
+                      >
+                        Upload CV
+                      </Button>
+                      <Button
+                        onClick={runDemoAnalysis}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        disabled={analyzing}
+                      >
+                        Try Demo
+                      </Button>
+                    </div>
                   </div>
                 )}
                 <Textarea
@@ -165,7 +220,6 @@ const JobMatching = () => {
                   value={jobDescription}
                   onChange={(e) => setJobDescription(e.target.value)}
                   className="min-h-[200px]"
-                  disabled={hasSkills === false}
                 />
                 <Button
                   onClick={analyzeJobMatch}
@@ -188,6 +242,11 @@ const JobMatching = () => {
                     animate={{ opacity: 1, y: 0 }}
                     className="space-y-4"
                   >
+                    {isDemoMode && (
+                      <div className="p-3 bg-accent/50 text-accent-foreground rounded-lg border border-accent text-sm">
+                        <strong>Demo Mode:</strong> This is sample data. Upload your CV for personalized results.
+                      </div>
+                    )}
                     <div className="p-4 bg-gradient-primary text-white rounded-lg">
                       <div className="text-center">
                         <div className="text-sm font-medium mb-1">Match Score</div>
