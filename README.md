@@ -254,7 +254,7 @@ Copyright © 2025 SkillSense. All rights reserved.
 
 ## 🔗 Links
 
-- **Live Demo**: [https://lovable.dev/projects/6f71f6c6-a754-4cd2-8f59-264ab5337261](https://lovable.dev/projects/6f71f6c6-a754-4cd2-8f59-264ab5337261)
+- **Live Demo**: [https://skill-whisperer-68.lovable.app/]
 - **Documentation**: See [FEATURES.md](./FEATURES.md) and [QUICKSTART.md](./QUICKSTART.md)
 - **Lovable Docs**: [https://docs.lovable.dev](https://docs.lovable.dev)
 
