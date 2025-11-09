@@ -268,4 +268,3 @@ For issues or questions:
 
 ---
 
-**Built with ❤️ using [Lovable](https://lovable.dev)**
