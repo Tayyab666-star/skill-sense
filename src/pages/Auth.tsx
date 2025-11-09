@@ -232,11 +232,11 @@ const Auth = () => {
                         onChange={(e) => setSignupPassword(e.target.value)}
                         className="pl-10"
                         required
-                        minLength={6}
+                        minLength={12}
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      At least 6 characters
+                      At least 12 characters
                     </p>
                   </div>
 
