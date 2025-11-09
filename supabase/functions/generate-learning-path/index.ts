@@ -38,11 +38,15 @@ serve(async (req) => {
 
     console.log('🎯 Generating learning path for user:', user.id, 'goal:', goalId);
 
-    // Fetch user's current skills
+    // Fetch user's current skills (using direct user_id filter to avoid RLS recursion)
     const { data: userSkills, error: skillsError } = await supabase
       .from('user_skills')
       .select(`
-        *,
+        id,
+        skill_id,
+        user_id,
+        proficiency_level,
+        confidence_score,
         skill_framework:skill_id (
           name,
           category,
@@ -53,8 +57,11 @@ serve(async (req) => {
 
     if (skillsError) {
       console.error('Error fetching user skills:', skillsError);
+      console.error('Error details:', JSON.stringify(skillsError));
       throw new Error('Failed to fetch user skills');
     }
+
+    console.log('📊 Fetched user skills:', userSkills?.length || 0);
 
     // Fetch career goal if goalId is provided
     let goalData = null;
@@ -93,9 +100,14 @@ serve(async (req) => {
     }
 
     // Build context for AI
-    const currentSkillsText = userSkills
-      ?.map(us => `- ${us.skill_framework?.name || 'Unknown'} (${us.proficiency_level || 'Unknown level'}, Confidence: ${us.confidence_score || 0}%)`)
-      .join('\n') || 'No skills recorded yet';
+    const currentSkillsText = userSkills && userSkills.length > 0
+      ? userSkills.map(us => {
+          const skillName = us.skill_framework && typeof us.skill_framework === 'object' && !Array.isArray(us.skill_framework) 
+            ? (us.skill_framework as any).name 
+            : 'Unknown';
+          return `- ${skillName} (${us.proficiency_level || 'Unknown level'}, Confidence: ${us.confidence_score || 0}%)`;
+        }).join('\n')
+      : 'No skills recorded yet';
 
     const goalText = goalData 
       ? `Goal: ${goalData.title}\nDescription: ${goalData.description || 'Not provided'}\nTarget Skills: ${goalData.target_skills?.join(', ') || 'Not specified'}\nTimeline: ${goalData.timeline || 'Not specified'}`
