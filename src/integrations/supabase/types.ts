@@ -410,21 +410,21 @@ export type Database = {
           id: string
           joined_at: string | null
           organization_id: string
-          role: string | null
+          role: Database["public"]["Enums"]["org_role"] | null
           user_id: string
         }
         Insert: {
           id?: string
           joined_at?: string | null
           organization_id: string
-          role?: string | null
+          role?: Database["public"]["Enums"]["org_role"] | null
           user_id: string
         }
         Update: {
           id?: string
           joined_at?: string | null
           organization_id?: string
-          role?: string | null
+          role?: Database["public"]["Enums"]["org_role"] | null
           user_id?: string
         }
         Relationships: [
@@ -443,6 +443,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      organization_role_audit: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          id: string
+          new_role: Database["public"]["Enums"]["org_role"]
+          old_role: Database["public"]["Enums"]["org_role"] | null
+          organization_id: string
+          user_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by: string
+          id?: string
+          new_role: Database["public"]["Enums"]["org_role"]
+          old_role?: Database["public"]["Enums"]["org_role"] | null
+          organization_id: string
+          user_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          id?: string
+          new_role?: Database["public"]["Enums"]["org_role"]
+          old_role?: Database["public"]["Enums"]["org_role"] | null
+          organization_id?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       organizations: {
         Row: {
@@ -744,6 +774,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_org_role: {
+        Args: {
+          _org_id: string
+          _required_role: Database["public"]["Enums"]["org_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_member_of_org: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
@@ -760,6 +798,7 @@ export type Database = {
         | "reference_letter"
         | "goal_document"
         | "other"
+      org_role: "member" | "manager" | "admin" | "owner"
       privacy_level: "private" | "organization" | "public"
       proficiency_level: "Beginner" | "Intermediate" | "Advanced" | "Expert"
       skill_category:
@@ -907,6 +946,7 @@ export const Constants = {
         "goal_document",
         "other",
       ],
+      org_role: ["member", "manager", "admin", "owner"],
       privacy_level: ["private", "organization", "public"],
       proficiency_level: ["Beginner", "Intermediate", "Advanced", "Expert"],
       skill_category: [
