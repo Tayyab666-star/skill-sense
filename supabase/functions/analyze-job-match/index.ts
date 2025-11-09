@@ -12,17 +12,22 @@ serve(async (req) => {
   }
 
   try {
+    console.log('🔍 Starting analyze-job-match function...');
     const { jobDescription } = await req.json();
 
     if (!jobDescription || typeof jobDescription !== 'string') {
+      console.log('❌ Invalid job description');
       return new Response(
         JSON.stringify({ error: "Job description is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    console.log('📝 Job description length:', jobDescription.length);
+
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
+      console.log('❌ Missing auth header');
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -37,12 +42,14 @@ serve(async (req) => {
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
+      console.log('❌ User auth failed:', userError);
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    console.log('✅ User authenticated:', user.id);
     console.log('🔍 Fetching user skills from database...');
 
     // Fetch user's skills from database with skill names

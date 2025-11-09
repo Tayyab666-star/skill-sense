@@ -402,6 +402,10 @@ const JobMatching = () => {
   };
 
   const analyzeJobMatch = async () => {
+    console.log('🎯 Starting job match analysis...');
+    console.log('📝 Job description length:', jobDescription.length);
+    console.log('✨ Has skills:', hasSkills);
+    
     if (!jobDescription.trim()) {
       toast({
         title: "Job Description Required",
@@ -414,7 +418,7 @@ const JobMatching = () => {
     if (hasSkills === false) {
       toast({
         title: "No Skills Found",
-        description: "Upload your CV first, or click 'Try Demo' to see how it works.",
+        description: "Upload your CV first to get personalized matches, or click 'Try Demo' to see how it works.",
         variant: "destructive",
       });
       return;
@@ -424,41 +428,52 @@ const JobMatching = () => {
     setIsDemoMode(false);
     
     try {
+      console.log('📞 Calling analyze-job-match edge function...');
+      
       const { data, error } = await supabase.functions.invoke('analyze-job-match', {
         body: { jobDescription }
       });
 
+      console.log('📥 Edge function response:', { data, error });
+
       if (error) {
-        console.error('Error analyzing job match:', error);
+        console.error('❌ Error from edge function:', error);
         throw error;
       }
 
       if (data?.error) {
+        console.error('❌ Error in response data:', data);
         throw new Error(data.details || data.error);
       }
 
+      console.log('✅ Analysis successful:', data);
       setMatchResult(data);
       toast({
-        title: "Analysis Complete",
-        description: `Match score: ${data.matchScore}%`,
+        title: "Analysis Complete!",
+        description: `Match score: ${data.matchScore}% - ${data.matchingSkills?.length || 0} matching skills found`,
       });
     } catch (error) {
-      console.error('Failed to analyze job match:', error);
+      console.error('💥 Failed to analyze job match:', error);
       toast({
         title: "Analysis Failed",
-        description: error instanceof Error ? error.message : "Please upload your CV first to get accurate matches.",
+        description: error instanceof Error ? error.message : "Unable to analyze job match. Please try again.",
         variant: "destructive",
       });
+      
+      // Show partial result with error message
       setMatchResult({
         matchScore: 0,
         matchingSkills: [],
         missingSkills: [],
         recommendations: [
-          error instanceof Error ? error.message : "Failed to analyze job match. Please ensure you have uploaded your CV or connected data sources first."
+          `Error: ${error instanceof Error ? error.message : "Failed to analyze job match."}`,
+          "Please make sure you have uploaded your CV first.",
+          "If the problem persists, try refreshing the page or uploading your CV again."
         ]
       });
     } finally {
       setAnalyzing(false);
+      console.log('🏁 Analysis complete');
     }
   };
 
@@ -646,11 +661,14 @@ const JobMatching = () => {
                 />
                 <Button
                   onClick={analyzeJobMatch}
-                  disabled={analyzing}
+                  disabled={analyzing || uploadingCV}
                   className="w-full"
                 >
                   {analyzing ? (
-                    <>Analyzing...</>
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                      Analyzing...
+                    </>
                   ) : (
                     <>
                       <Sparkles className="mr-2 h-4 w-4" />
