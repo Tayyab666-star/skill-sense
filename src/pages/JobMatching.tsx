@@ -288,6 +288,14 @@ const JobMatching = () => {
 
   const analyzeJobMatch = async () => {
     if (!jobDescription.trim()) return;
+    if (hasSkills === false) {
+      toast({
+        title: "Skills Required",
+        description: "Upload your CV or connect sources first, or try Demo mode.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setAnalyzing(true);
     setIsDemoMode(false);
@@ -475,7 +483,7 @@ const JobMatching = () => {
                 />
                 <Button
                   onClick={analyzeJobMatch}
-                  disabled={!jobDescription.trim() || analyzing}
+                  disabled={!jobDescription.trim() || analyzing || hasSkills === false}
                   className="w-full"
                 >
                   {analyzing ? (
