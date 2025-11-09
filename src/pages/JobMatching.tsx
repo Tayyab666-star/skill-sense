@@ -261,27 +261,17 @@ const JobMatching = () => {
                 {hasSkills === false && (
                   <div className="p-4 bg-muted rounded-lg border border-border mb-4">
                     <p className="text-sm text-muted-foreground mb-3">
-                      Upload your CV for personalized analysis, or try our demo mode to see how it works.
+                      Try our demo mode to see how job matching works.
                     </p>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => navigate("/upload")}
-                        variant="default"
-                        size="sm"
-                        className="flex-1"
-                      >
-                        Upload CV
-                      </Button>
-                      <Button
-                        onClick={runDemoAnalysis}
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        disabled={analyzing}
-                      >
-                        Try Demo
-                      </Button>
-                    </div>
+                    <Button
+                      onClick={runDemoAnalysis}
+                      variant="default"
+                      size="sm"
+                      className="w-full"
+                      disabled={analyzing}
+                    >
+                      Try Demo
+                    </Button>
                   </div>
                 )}
                 {hasSkills === true && (
