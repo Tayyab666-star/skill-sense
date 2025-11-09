@@ -58,12 +58,19 @@ serve(async (req) => {
 
     console.log('🔍 Fetching GitHub profile:', githubUsername);
 
+    // Prepare GitHub API headers with optional token to avoid rate limits
+    const GITHUB_TOKEN = Deno.env.get("GITHUB_TOKEN")?.trim();
+    const ghHeaders: Record<string, string> = {
+      'Accept': 'application/vnd.github.v3+json',
+      'User-Agent': 'SkillSense-App',
+    };
+    if (GITHUB_TOKEN) {
+      ghHeaders['Authorization'] = `Bearer ${GITHUB_TOKEN}`;
+    }
+
     // Fetch user profile
     const profileResponse = await fetch(`https://api.github.com/users/${githubUsername}`, {
-      headers: {
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'SkillSense-App'
-      }
+      headers: ghHeaders
     });
 
     if (!profileResponse.ok) {
@@ -88,10 +95,7 @@ serve(async (req) => {
     const reposResponse = await fetch(
       `https://api.github.com/users/${githubUsername}/repos?sort=updated&per_page=30`,
       {
-        headers: {
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'SkillSense-App'
-        }
+        headers: ghHeaders
       }
     );
 
