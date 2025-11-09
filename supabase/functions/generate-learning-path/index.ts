@@ -20,19 +20,78 @@ serve(async (req) => {
       );
     }
 
-    const supabase = createClient(
+    const supabaseService = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await supabaseService.auth.getUser();
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Rate limiting check
+    const RATE_LIMIT = 5; // requests per hour
+    const WINDOW_HOURS = 1;
+    const endpoint = 'generate-learning-path';
+    const now = new Date();
+    const windowStart = new Date(now.getTime() - (WINDOW_HOURS * 60 * 60 * 1000));
+
+    const { data: rateLimitData } = await supabaseService
+      .from('rate_limits')
+      .select('request_count, window_start')
+      .eq('user_id', user.id)
+      .eq('endpoint', endpoint)
+      .gte('window_start', windowStart.toISOString())
+      .order('window_start', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (rateLimitData && rateLimitData.request_count >= RATE_LIMIT) {
+      const resetTime = new Date(new Date(rateLimitData.window_start).getTime() + (WINDOW_HOURS * 60 * 60 * 1000));
+      const retryAfter = Math.ceil((resetTime.getTime() - now.getTime()) / 1000);
+      
+      return new Response(
+        JSON.stringify({ 
+          error: "Rate limit exceeded",
+          details: `Maximum ${RATE_LIMIT} requests per hour. Please try again later.`,
+          retryAfter
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            "Content-Type": "application/json",
+            "Retry-After": retryAfter.toString()
+          } 
+        }
+      );
+    }
+
+    // Update rate limit
+    if (rateLimitData) {
+      await supabaseService.from('rate_limits').update({ 
+        request_count: rateLimitData.request_count + 1,
+        updated_at: now.toISOString()
+      }).eq('user_id', user.id).eq('endpoint', endpoint).eq('window_start', rateLimitData.window_start);
+    } else {
+      await supabaseService.from('rate_limits').insert({
+        user_id: user.id,
+        endpoint,
+        request_count: 1,
+        window_start: now.toISOString()
+      });
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
 
     const { goalId } = await req.json();
 

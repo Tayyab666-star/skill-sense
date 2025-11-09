@@ -30,6 +30,10 @@ serve(async (req) => {
   try {
     const { cvText, extractedSkills } = await req.json();
 
+    // Input validation
+    const MAX_CV_LENGTH = 100000; // 100KB (~25 pages)
+    const MIN_TEXT_LENGTH = 50;
+
     if (!cvText || typeof cvText !== 'string') {
       return new Response(
         JSON.stringify({ error: "CV text is required" }),
@@ -37,13 +41,121 @@ serve(async (req) => {
       );
     }
 
+    if (cvText.length < MIN_TEXT_LENGTH) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Input too short",
+          details: `CV text must be at least ${MIN_TEXT_LENGTH} characters`
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (cvText.length > MAX_CV_LENGTH) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Input too large",
+          maxLength: MAX_CV_LENGTH,
+          details: `CV text exceeds maximum allowed size of ${MAX_CV_LENGTH} characters (${Math.round(MAX_CV_LENGTH/1024)}KB)`
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Authenticate user first for rate limiting
+    const authHeader = req.headers.get('authorization') || '';
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: userErr } = await supabaseClient.auth.getUser();
+    if (userErr || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Rate limiting check
+    const RATE_LIMIT = 10; // requests per hour
+    const WINDOW_HOURS = 1;
+    const endpoint = 'analyze-cv';
+    const now = new Date();
+    const windowStart = new Date(now.getTime() - (WINDOW_HOURS * 60 * 60 * 1000));
+
+    const { data: rateLimitData, error: rateLimitError } = await supabaseClient
+      .from('rate_limits')
+      .select('request_count, window_start')
+      .eq('user_id', user.id)
+      .eq('endpoint', endpoint)
+      .gte('window_start', windowStart.toISOString())
+      .order('window_start', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (rateLimitError) {
+      console.error('Rate limit check error:', rateLimitError);
+    }
+
+    if (rateLimitData && rateLimitData.request_count >= RATE_LIMIT) {
+      const resetTime = new Date(new Date(rateLimitData.window_start).getTime() + (WINDOW_HOURS * 60 * 60 * 1000));
+      const retryAfter = Math.ceil((resetTime.getTime() - now.getTime()) / 1000);
+      
+      return new Response(
+        JSON.stringify({ 
+          error: "Rate limit exceeded",
+          details: `Maximum ${RATE_LIMIT} requests per hour. Please try again later.`,
+          retryAfter,
+          resetAt: resetTime.toISOString()
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            "Content-Type": "application/json",
+            "X-RateLimit-Limit": RATE_LIMIT.toString(),
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": resetTime.getTime().toString(),
+            "Retry-After": retryAfter.toString()
+          } 
+        }
+      );
+    }
+
+    // Update rate limit
+    if (rateLimitData) {
+      await supabaseClient
+        .from('rate_limits')
+        .update({ 
+          request_count: rateLimitData.request_count + 1,
+          updated_at: now.toISOString()
+        })
+        .eq('user_id', user.id)
+        .eq('endpoint', endpoint)
+        .eq('window_start', rateLimitData.window_start);
+    } else {
+      await supabaseClient
+        .from('rate_limits')
+        .insert({
+          user_id: user.id,
+          endpoint,
+          request_count: 1,
+          window_start: now.toISOString()
+        });
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // Truncate to max length before processing
+    const processedText = cvText.slice(0, MAX_CV_LENGTH);
+
     console.log('🚀 Starting AI-powered CV analysis...');
-    console.log('📄 CV length:', cvText.length, 'characters');
+    console.log('📄 CV length:', processedText.length, 'characters');
     console.log('🎯 Extracted skills:', extractedSkills?.length || 0);
 
     // System prompt for skill analysis
@@ -52,7 +164,7 @@ serve(async (req) => {
     const userPrompt = `Analyze this CV and extract all skills (both explicit and implicit):
 
 CV TEXT:
-${cvText}
+${processedText}
 
 ${extractedSkills && extractedSkills.length > 0 ? `\nPreviously identified skills to validate: ${extractedSkills.join(', ')}` : ''}
 
@@ -173,17 +285,13 @@ Provide comprehensive skill analysis with evidence, proficiency levels, career i
 
     // Persist recognized skills into user_skills for the authenticated user
     try {
-      const authHeader = req.headers.get('authorization') || '';
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
         Deno.env.get('SUPABASE_ANON_KEY') ?? '',
         { global: { headers: { Authorization: authHeader } } }
       );
 
-      const { data: { user }, error: userErr } = await supabase.auth.getUser();
-      if (userErr || !user) {
-        console.log('⚠️ Cannot persist skills - user not authenticated');
-      } else {
+      if (user) {
         const uniqueNames = Array.from(new Set((analysis.skills as SkillAnalysis[])
           .map(s => s.name.trim()).filter(Boolean)));
 

@@ -15,6 +15,10 @@ serve(async (req) => {
     console.log('🔍 Starting analyze-job-match function...');
     const { jobDescription } = await req.json();
 
+    // Input validation
+    const MAX_JOB_DESC_LENGTH = 50000; // 50KB
+    const MIN_TEXT_LENGTH = 50;
+
     if (!jobDescription || typeof jobDescription !== 'string') {
       console.log('❌ Invalid job description');
       return new Response(
@@ -23,7 +27,29 @@ serve(async (req) => {
       );
     }
 
-    console.log('📝 Job description length:', jobDescription.length);
+    if (jobDescription.length < MIN_TEXT_LENGTH) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Input too short",
+          details: `Job description must be at least ${MIN_TEXT_LENGTH} characters`
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (jobDescription.length > MAX_JOB_DESC_LENGTH) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Input too large",
+          maxLength: MAX_JOB_DESC_LENGTH,
+          details: `Job description exceeds maximum allowed size of ${MAX_JOB_DESC_LENGTH} characters (${Math.round(MAX_JOB_DESC_LENGTH/1024)}KB)`
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const processedJobDesc = jobDescription.slice(0, MAX_JOB_DESC_LENGTH);
+    console.log('📝 Job description length:', processedJobDesc.length);
 
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
@@ -34,13 +60,13 @@ serve(async (req) => {
       );
     }
 
-    const supabase = createClient(
+    const supabaseService = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await supabaseService.auth.getUser();
     if (userError || !user) {
       console.log('❌ User auth failed:', userError);
       return new Response(
@@ -50,6 +76,65 @@ serve(async (req) => {
     }
 
     console.log('✅ User authenticated:', user.id);
+
+    // Rate limiting check
+    const RATE_LIMIT = 20; // requests per hour
+    const WINDOW_HOURS = 1;
+    const endpoint = 'analyze-job-match';
+    const now = new Date();
+    const windowStart = new Date(now.getTime() - (WINDOW_HOURS * 60 * 60 * 1000));
+
+    const { data: rateLimitData } = await supabaseService
+      .from('rate_limits')
+      .select('request_count, window_start')
+      .eq('user_id', user.id)
+      .eq('endpoint', endpoint)
+      .gte('window_start', windowStart.toISOString())
+      .order('window_start', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (rateLimitData && rateLimitData.request_count >= RATE_LIMIT) {
+      const resetTime = new Date(new Date(rateLimitData.window_start).getTime() + (WINDOW_HOURS * 60 * 60 * 1000));
+      const retryAfter = Math.ceil((resetTime.getTime() - now.getTime()) / 1000);
+      
+      return new Response(
+        JSON.stringify({ 
+          error: "Rate limit exceeded",
+          details: `Maximum ${RATE_LIMIT} requests per hour. Please try again later.`,
+          retryAfter
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            "Content-Type": "application/json",
+            "Retry-After": retryAfter.toString()
+          } 
+        }
+      );
+    }
+
+    // Update rate limit
+    if (rateLimitData) {
+      await supabaseService.from('rate_limits').update({ 
+        request_count: rateLimitData.request_count + 1,
+        updated_at: now.toISOString()
+      }).eq('user_id', user.id).eq('endpoint', endpoint).eq('window_start', rateLimitData.window_start);
+    } else {
+      await supabaseService.from('rate_limits').insert({
+        user_id: user.id,
+        endpoint,
+        request_count: 1,
+        window_start: now.toISOString()
+      });
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
     console.log('🔍 Fetching user skills from database...');
 
     // Fetch user's skills from database with skill names
@@ -107,7 +192,7 @@ Use the analyze_job_match function to return structured results.`;
     const userPrompt = `Analyze this job match:
 
 JOB DESCRIPTION:
-${jobDescription}
+${processedJobDesc}
 
 CANDIDATE SKILLS:
 ${userSkillsSummary}
@@ -228,7 +313,7 @@ Provide a detailed analysis including match score, matching skills, missing skil
         matching_skills: analysis.matchingSkills,
         missing_skills: analysis.missingSkills,
         analysis: {
-          jobDescription: jobDescription.slice(0, 2000),
+          jobDescription: processedJobDesc.slice(0, 2000),
           recommendations: analysis.recommendations,
           jobRequirements: analysis.jobRequirements,
           analyzedAt: new Date().toISOString()

@@ -14,9 +14,34 @@ serve(async (req) => {
   try {
     const { reviewText, reviewTitle, reviewDate } = await req.json();
 
+    // Input validation
+    const MAX_REVIEW_LENGTH = 75000; // 75KB
+    const MIN_TEXT_LENGTH = 50;
+
     if (!reviewText || typeof reviewText !== 'string') {
       return new Response(
         JSON.stringify({ error: "Performance review text is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (reviewText.length < MIN_TEXT_LENGTH) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Input too short",
+          details: `Performance review must be at least ${MIN_TEXT_LENGTH} characters`
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (reviewText.length > MAX_REVIEW_LENGTH) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Input too large",
+          maxLength: MAX_REVIEW_LENGTH,
+          details: `Performance review exceeds maximum allowed size of ${MAX_REVIEW_LENGTH} characters (${Math.round(MAX_REVIEW_LENGTH/1024)}KB)`
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -29,19 +54,80 @@ serve(async (req) => {
       );
     }
 
-    const supabase = createClient(
+    const supabaseService = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await supabaseService.auth.getUser();
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Rate limiting check
+    const RATE_LIMIT = 10; // requests per hour
+    const WINDOW_HOURS = 1;
+    const endpoint = 'analyze-performance-review';
+    const now = new Date();
+    const windowStart = new Date(now.getTime() - (WINDOW_HOURS * 60 * 60 * 1000));
+
+    const { data: rateLimitData } = await supabaseService
+      .from('rate_limits')
+      .select('request_count, window_start')
+      .eq('user_id', user.id)
+      .eq('endpoint', endpoint)
+      .gte('window_start', windowStart.toISOString())
+      .order('window_start', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (rateLimitData && rateLimitData.request_count >= RATE_LIMIT) {
+      const resetTime = new Date(new Date(rateLimitData.window_start).getTime() + (WINDOW_HOURS * 60 * 60 * 1000));
+      const retryAfter = Math.ceil((resetTime.getTime() - now.getTime()) / 1000);
+      
+      return new Response(
+        JSON.stringify({ 
+          error: "Rate limit exceeded",
+          details: `Maximum ${RATE_LIMIT} requests per hour. Please try again later.`,
+          retryAfter
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            "Content-Type": "application/json",
+            "Retry-After": retryAfter.toString()
+          } 
+        }
+      );
+    }
+
+    // Update rate limit
+    if (rateLimitData) {
+      await supabaseService.from('rate_limits').update({ 
+        request_count: rateLimitData.request_count + 1,
+        updated_at: now.toISOString()
+      }).eq('user_id', user.id).eq('endpoint', endpoint).eq('window_start', rateLimitData.window_start);
+    } else {
+      await supabaseService.from('rate_limits').insert({
+        user_id: user.id,
+        endpoint,
+        request_count: 1,
+        window_start: now.toISOString()
+      });
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const processedText = reviewText.slice(0, MAX_REVIEW_LENGTH);
 
     console.log('📊 Analyzing performance review...');
 
@@ -90,7 +176,7 @@ REVIEW TITLE: ${reviewTitle || 'Performance Review'}
 REVIEW DATE: ${reviewDate || 'Not specified'}
 
 REVIEW CONTENT:
-${reviewText}
+${processedText}
 
 Extract both praised strengths and areas for improvement. Identify soft skills like communication, leadership, and collaboration.`;
 
@@ -151,10 +237,10 @@ Extract both praised strengths and areas for improvement. Identify soft skills l
         user_id: user.id,
         source_type: 'performance_review',
         source_name: reviewTitle || 'Performance Review',
-        raw_content: reviewText,
+        raw_content: processedText,
         metadata: {
           reviewDate: reviewDate || new Date().toISOString(),
-          contentLength: reviewText.length
+          contentLength: processedText.length
         },
         processed_at: new Date().toISOString()
       });
@@ -173,7 +259,7 @@ Extract both praised strengths and areas for improvement. Identify soft skills l
         sourceMetadata: {
           title: reviewTitle,
           date: reviewDate,
-          contentLength: reviewText.length
+          contentLength: processedText.length
         }
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
